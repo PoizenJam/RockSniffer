@@ -289,7 +289,8 @@ var app = new Vue({
 				
 				var phraseHeight = 1;
 				
-				//If has maxDifficulty, set phrase height to fraction of maxDif. Else set to max height
+				if(phrase.maxDifficulty > maxDif){maxDif = phrase.maxDifficulty}
+				
 				if(maxDif != 0){
 					phraseHeight = phrase.maxDifficulty/maxDif;
 				}
@@ -433,6 +434,8 @@ var app = new Vue({
 				
 				var phraseHeight = 1;
 				
+				if(phrase.maxDifficulty > maxDif){maxDif = phrase.maxDifficulty}
+				
 				if(maxDif != 0){
 					phraseHeight = phrase.maxDifficulty/maxDif;
 				}
@@ -440,7 +443,7 @@ var app = new Vue({
 				phrase.style = {
 					left: phrase.startPercent+'%',
 					width: (phrase.lengthPercent-(100/(widthUI)))+'%',
-					height: Math.round(12*(phraseHeight))+'px'
+					height: Math.round((phraseHeight)*100)+'%'
 				}
 				
 				if(tracker.getPhraseGrade((phrase.startTime + phrase.endTime)/2) != "No Data"){

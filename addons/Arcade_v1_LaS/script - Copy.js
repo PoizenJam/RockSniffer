@@ -1,4 +1,8 @@
-var widthUI = document.getElementsByClassName("mainContainer")[0].offsetWidth;
+const mainCont = document.querySelector('.mainContainer')
+var widthUI = document.getElementsByClassName(".mainContainer")[0].offsetWidth;
+var heightUI = document.getElementsByClassName(".albumArt")[0].offsetHeight + document.getElementsByClassName(".songInfo")[0].offsetHeight;
+
+
 var gradeCode = {
 	NaN : 'white',
 	'error' : 'white',
@@ -9,6 +13,7 @@ var gradeCode = {
 	'Good' : '#fcd800',
 	'Perfect' : '#00fc00'
 }
+
 function accuracyGradient(accuracy){
 	if (accuracy == "Rest"){return "grey"}
 	if (accuracy < 50){return "rgb(255, 0, 0)"}
@@ -56,8 +61,17 @@ var app = new Vue({
 	},
     mounted: function() {
         setInterval(this.doScrollSong, 8000);
+		setInterval(this.resizeContainer,10);
     },
 	methods: {
+        resizeContainer: function() {
+			if(this.song == null){
+				var height = 0;
+				} else {				
+				var height = heightUI;
+				}				
+			mainCont.setProperty('height', height + 'px');
+        },
         doScrollSong: function() {
 			if(this.song == null){
 				var width = 0;
@@ -374,8 +388,6 @@ var app = new Vue({
 				
 				var phraseHeight = 1;
 				
-				if(phrase.maxDifficulty > maxDif){maxDif = phrase.maxDifficulty}
-				
 				if(maxDif != 0){
 					phraseHeight = phrase.maxDifficulty/maxDif;
 				}
@@ -656,8 +668,6 @@ var app = new Vue({
 				
 				var phraseHeight = 1;
 				
-				if(phrase.maxDifficulty > maxDif){maxDif = phrase.maxDifficulty}
-				
 				if(maxDif != 0){
 					phraseHeight = phrase.maxDifficulty/maxDif;
 				}
@@ -665,7 +675,7 @@ var app = new Vue({
 				phrase.style = {
 					left: phrase.startPercent+'%',
 					width: (phrase.lengthPercent-(100/(widthUI)))+'%',
-					height: Math.round((phraseHeight)*100)+'%'
+					height: Math.round(12*(phraseHeight))+'px'
 				}
 				
 				if(tracker.getPhraseGrade((phrase.startTime + phrase.endTime)/2) != "No Data"){
