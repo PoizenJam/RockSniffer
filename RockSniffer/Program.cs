@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Linq;
 using RockSniffer.Addons;
 using RockSniffer.Addons.Storage;
 using RockSniffer.Configuration;
@@ -10,22 +10,24 @@ using RockSnifferLib.RSHelpers;
 using RockSnifferLib.RSHelpers.NoteData;
 using RockSnifferLib.Sniffing;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
-using System.Drawing.Text;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using RockSniffer.History;
+using RockSnifferLib.Sniffing;
+
 
 namespace RockSniffer
 {
-        class Program
+    class Program
     {
-        internal const string version = "0.4.2.1";
+        internal const string version = "0.6.5";
 
         internal static ICache cache;
         internal static Config config;
@@ -41,8 +43,11 @@ namespace RockSniffer
 
         private RSMemoryReadout memReadout = new RSMemoryReadout();
         private SongDetails details = new SongDetails();
-        private DiscordRPCHandler rpcHandler;
-        string gameState;
+        private DiscordRPCHandler rpcHandler;         
+        private string gameState;
+        private PlaythroughHistory playthroughHistory;
+        private SongDetails currentSong;
+
 
         static void Main(string[] args)
         {
@@ -69,7 +74,7 @@ namespace RockSniffer
         {
             //Set title and print version
             Console.Title = string.Format("RockSniffer {0}", version);
-            Logger.Log("RockSniffer_PJ {0} ({1}bits)", version, Is64Bits ? "64" : "32");
+            Logger.Log("RockSniffer {0} ({1}bits)", version, Is64Bits ? "64" : "32");
 
             //Initialize and load configuration
             config = new Config();
@@ -98,11 +103,27 @@ namespace RockSniffer
             Logger.logSystemHandleQuery = config.debugSettings.debugSystemHandleQuery;
             Logger.logProcessingQueue = config.debugSettings.debugProcessingQueue;
 
+            //Initialize EventLogger
+            RockSniffer.Logging.EventLogger.eventLogMode = config.outputSettings.eventLogMode;
+            RockSniffer.Logging.EventLogger.Initialize();
+
+            
             //Initialize cache
             cache = new SQLiteCache();
 
             //Create directories
             Directory.CreateDirectory("output");
+
+            //Initialize playthrough history
+            if (config.outputSettings.enableSqliteHistory || config.outputSettings.enableCsvHistory)
+            {
+                playthroughHistory = new PlaythroughHistory(
+                    config.outputSettings.enableSqliteHistory,
+                    config.outputSettings.sqliteHistoryPath,
+                    config.outputSettings.enableCsvHistory,
+                    config.outputSettings.csvHistoryPath
+                );
+            }
 
             //Enable addon service if configured
             if (config.addonSettings.enableAddons)
@@ -241,25 +262,56 @@ namespace RockSniffer
 
             Logger.Log("Rocksmith found! Sniffing...");
 
+            var rocksmithEditionHashes = new Dictionary<string, RSEdition>
+            {
+                { "HtUXPbqP7r9hrd5sRV8Seg==", RSEdition.Remastered },
+                { "KM0Hh0ZvOd/G3nf3dhAiBg==", RSEdition.Remastered_Learn_And_Play },
+                { "GxT+/TXLpUFys+Cysek8zg==", RSEdition.Remastered_Just_In_Case_We_Need_It_Beta },
+            };
+
             //Check rocksmith executable hash to make sure its the correct version
             string hash = PSARCUtil.GetFileHash(new FileInfo(rsProcess.MainModule.FileName));
 
             Logger.Log($"Rocksmith executable hash: {hash}");
 
-            if (!hash.Equals("HtUXPbqP7r9hrd5sRV8Seg=="))
+            if (!rocksmithEditionHashes.ContainsKey(hash))
             {
                 Logger.LogError("Executable hash does not match expected hash, make sure you have the correct version");
                 Logger.Log("Press any key to exit");
                 Console.ReadKey();
                 Environment.Exit(0);
             }
+            
+            var edition = rocksmithEditionHashes[hash];
+            
+            Logger.Log("Detected Rocksmith edition: {0}", edition);
 
             //Initialize file handle reader and memory reader
-            Sniffer sniffer = new Sniffer(rsProcess, cache, config.snifferSettings);
+            Sniffer sniffer = new Sniffer(rsProcess, cache, edition, config.snifferSettings);
 
             //Listen for events
             sniffer.OnSongChanged += Sniffer_OnCurrentSongChanged;
             sniffer.OnMemoryReadout += Sniffer_OnMemoryReadout;
+            
+            //Add playthrough history listeners
+            if (playthroughHistory != null)
+            {
+                // Metadata loaded (when song is selected)
+                sniffer.OnSongStarted += (sender, args) => {
+                    currentSong = args.song;
+                    playthroughHistory.OnMetadataLoaded(args.song, memReadout);
+                };
+                
+                // Actual gameplay start (when Sniffer.cs logs EVENT=START)
+                RockSnifferLib.Logging.Logger.OnEventStartLogged += (sender, e) => {
+                    playthroughHistory.OnActualSongStart(e);
+                };
+                
+                // Actual gameplay end (when Sniffer.cs logs EVENT=END)
+                RockSnifferLib.Logging.Logger.OnEventEndLogged += (sender, e) => {
+                    playthroughHistory.OnActualSongEnd(e, currentSong, memReadout, sniffer.Completed, sniffer.Paused);
+                };
+            }
 
             //Add RPC event listeners
             if (config.rpcSettings.enabled)
@@ -280,19 +332,20 @@ namespace RockSniffer
                     break;
                 }
 
+                // Update gameState from the current sniffer state
                 gameState = sniffer.currentState.ToString();
+
                 OutputDetails();
 
                 //GOTTA GO FAST
-                Thread.Sleep(100);
+                Thread.Sleep(1000);
 
-                //if (random.Next(1000) == 0)
-                //{
-                //    Console.WriteLine("*sniff sniff*");
-                //}
+                if (random.Next(100) == 0)
+                {
+                    Console.WriteLine("*sniff sniff*");
+                }
             }
 
-            
             sniffer.Stop();
 
             //Clean up as best as we can
@@ -351,6 +404,8 @@ namespace RockSniffer
                 outputtext = outputtext.Replace("%SONG_ALBUM%", details.albumName);
                 outputtext = outputtext.Replace("%ALBUM_YEAR%", details.albumYear.ToString());
                 outputtext = outputtext.Replace("%SONG_LENGTH%", FormatTime(details.songLength));
+                outputtext = outputtext.Replace("%GAME_STAGE%", memReadout.gameStage);
+                outputtext = outputtext.Replace("%GAME_STATE%", gameState);
 
                 //Toolkit details
                 if (details.toolkit != null)
@@ -382,8 +437,6 @@ namespace RockSniffer
                 outputtext = outputtext.Replace("%NOTES_MISSED%", nd.TotalNotesMissed.ToString());
                 outputtext = outputtext.Replace("%TOTAL_NOTES%", nd.TotalNotes.ToString());
                 outputtext = outputtext.Replace("%CURRENT_ACCURACY%", FormatPercentage(nd.Accuracy));
-                outputtext = outputtext.Replace("%GAME_STAGE%", memReadout.gameStage); 
-                outputtext = outputtext.Replace("%GAME_STATE%", gameState);
 
                 //Write to output
                 WriteTextToFileLocking("output/" + of.filename, outputtext);

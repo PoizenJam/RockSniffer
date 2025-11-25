@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
@@ -28,6 +28,18 @@ namespace RockSniffer.Configuration
             { "game_stage.txt", "%GAME_STAGE%" },
             { "game_state.txt", "%GAME_STATE%" }
         };
+
+        // Playthrough history settings
+        public bool enableSqliteHistory = false;
+        public string sqliteHistoryPath = "playthrough_history.db";
+        public bool enableCsvHistory = false;
+        public string csvHistoryPath = "playthrough_history.csv";
+
+        // EVENT START/END log output mode
+        // "disabled" - No EVENT logs
+        // "legacy" - Same format as original Sniffer.cs
+        // "pretty" - Human-readable format
+        public string eventLogMode = "disabled";
 
         //Convert dictionary to array
         private void ConvertToArray()
