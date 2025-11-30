@@ -18,10 +18,8 @@ jobs:
 
       - name: Restore dependencies
         run: |
-          # Restore for the framework/runtime the project actually targets now
-          dotnet restore RockSniffer/RockSniffer.csproj \
-            --framework net8.0-windows \
-            --runtime win-x64
+          # Let restore pick up whatever TargetFramework(s) are in the csproj
+          dotnet restore
 
       - name: Build
         id: build
@@ -30,10 +28,11 @@ jobs:
           echo "Sniffer version: $VERSION"
           echo "SNIFFER_VERSION=$VERSION" >> "$GITHUB_OUTPUT"
 
+          # Build specifically for the Windows target framework
           dotnet build RockSniffer/RockSniffer.csproj \
-            --configuration Release \
+            -c Release \
             --no-restore \
-            --framework net8.0-windows
+            -f net8.0
 
       - name: Publish
         env:
@@ -42,8 +41,8 @@ jobs:
           dotnet publish RockSniffer/RockSniffer.csproj \
             -c Release \
             -o ./publish \
-            --runtime win-x64 \
-            --framework net8.0-windows \
+            -r win-x64 \
+            -f net8.0 \
             --self-contained false \
             -p:PublishSingleFile=true \
             -p:IncludeNativeLibrariesForSelfExtract=true
