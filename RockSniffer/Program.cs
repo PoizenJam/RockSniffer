@@ -301,12 +301,12 @@ namespace RockSniffer
                     currentSong = args.song;
                     playthroughHistory.OnMetadataLoaded(args.song, memReadout);
                 };
-                
+
                 // Actual gameplay start (when Sniffer.cs logs EVENT=START)
-                RockSnifferLib.Logging.Logger.OnEventStartLogged += (sender, e) => {
-                    playthroughHistory.OnActualSongStart(e);
+                sniffer.OnActualSongStart += (sender, args) => {
+                    playthroughHistory.OnActualSongStart(args);
                 };
-                
+
                 // Actual gameplay end (when Sniffer.cs logs EVENT=END)
                 RockSnifferLib.Logging.Logger.OnEventEndLogged += (sender, e) => {
                     playthroughHistory.OnActualSongEnd(e, currentSong, memReadout, sniffer.Completed, sniffer.Paused);

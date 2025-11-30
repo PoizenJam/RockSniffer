@@ -24,6 +24,8 @@ namespace RockSniffer.History
         private DateTime actualStartTimestamp;    // When song ACTUALLY started (Logger.Log EVENT=START)
         private DateTime actualEndTimestamp;      // When song ACTUALLY ended (Logger.Log EVENT=END)
         private RSMemoryReadout startReadout;
+        private string arrangementPath;          // Arrangement type (Lead/Rhythm/Bass)
+        private string arrangementTuning;        // Tuning (e.g., "E Standard", "D Standard (Capo Fret 2)")
 
         public PlaythroughHistory(bool enableSqlite, string sqlitePath, bool enableCsv, string csvPath)
         {
@@ -79,6 +81,8 @@ namespace RockSniffer.History
                     album_year INTEGER,
                     song_length REAL,
                     arrangement_id TEXT,
+                    arrangement_path TEXT,
+                    arrangement_tuning TEXT,
                     game_mode TEXT,
                     author TEXT,
                     total_notes INTEGER,
@@ -104,7 +108,7 @@ namespace RockSniffer.History
                 {
                     // Create CSV with headers
                     StringBuilder header = new StringBuilder();
-                    header.AppendLine("Timestamp,TimestampStart,TimestampEnd,SongID,SongName,ArtistName,AlbumName,AlbumYear,SongLength,ArrangementID,GameMode,Author,TotalNotes,NotesHit,NotesMissed,HighestHitStreak,Accuracy,Completed,Paused");
+                    header.AppendLine("Timestamp,TimestampStart,TimestampEnd,SongID,SongName,ArtistName,AlbumName,AlbumYear,SongLength,ArrangementID,ArrangementPath,ArrangementTuning,GameMode,Author,TotalNotes,NotesHit,NotesMissed,HighestHitStreak,Accuracy,Completed,Paused");
                     File.WriteAllText(csvPath, header.ToString());
                 }
             }
@@ -127,9 +131,11 @@ namespace RockSniffer.History
         /// <summary>
         /// Called when Sniffer.cs logs EVENT=START - this is the ACTUAL song start
         /// </summary>
-        public void OnActualSongStart(RockSnifferLib.Logging.EventLoggedArgs e)
+        public void OnActualSongStart(RockSnifferLib.Events.OnActualSongStartArgs e)
         {
-            actualStartTimestamp = e.Timestamp;
+            actualStartTimestamp = e.timestamp;
+            arrangementPath = e.path ?? "";
+            arrangementTuning = e.tuning ?? "";
         }
 
         /// <summary>
@@ -162,11 +168,11 @@ namespace RockSniffer.History
                 string insertQuery = @"
                     INSERT INTO playthrough_history 
                     (timestamp, timestamp_start, timestamp_end, song_id, song_name, artist_name, album_name, album_year, song_length, 
-                     arrangement_id, game_mode, author, total_notes, notes_hit, notes_missed, 
+                     arrangement_id, arrangement_path, arrangement_tuning, game_mode, author, total_notes, notes_hit, notes_missed, 
                      highest_hit_streak, accuracy, completed, paused)
                     VALUES 
                     (@timestamp, @timestamp_start, @timestamp_end, @song_id, @song_name, @artist_name, @album_name, @album_year, @song_length,
-                     @arrangement_id, @game_mode, @author, @total_notes, @notes_hit, @notes_missed,
+                     @arrangement_id, @arrangement_path, @arrangement_tuning, @game_mode, @author, @total_notes, @notes_hit, @notes_missed,
                      @highest_hit_streak, @accuracy, @completed, @paused)";
 
                 using (var command = new SQLiteCommand(insertQuery, sqliteConnection))
@@ -181,6 +187,8 @@ namespace RockSniffer.History
                     command.Parameters.AddWithValue("@album_year", song.albumYear);
                     command.Parameters.AddWithValue("@song_length", song.songLength);
                     command.Parameters.AddWithValue("@arrangement_id", readout.arrangementID ?? "");
+                    command.Parameters.AddWithValue("@arrangement_path", arrangementPath ?? "");
+                    command.Parameters.AddWithValue("@arrangement_tuning", arrangementTuning ?? "");
                     command.Parameters.AddWithValue("@game_mode", readout.mode.ToString());
                     command.Parameters.AddWithValue("@author", song.toolkit?.author ?? "");
                     command.Parameters.AddWithValue("@total_notes", readout.noteData?.TotalNotes ?? 0);
@@ -215,6 +223,8 @@ namespace RockSniffer.History
                 line.Append($"{song.albumYear},");
                 line.Append($"{song.songLength.ToString(CultureInfo.InvariantCulture)},");
                 line.Append($"\"{EscapeCsv(readout.arrangementID)}\",");
+                line.Append($"\"{EscapeCsv(arrangementPath)}\",");
+                line.Append($"\"{EscapeCsv(arrangementTuning)}\",");
                 line.Append($"\"{readout.mode}\",");
                 line.Append($"\"{EscapeCsv(song.toolkit?.author ?? "")}\",");
                 line.Append($"{readout.noteData?.TotalNotes ?? 0},");
