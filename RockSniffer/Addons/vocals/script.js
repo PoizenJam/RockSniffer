@@ -1,11 +1,9 @@
-let poller = new SnifferPoller({
-	
+﻿let poller = new SnifferPoller({
+
 	// Polling interval in ms
 	interval: 30,
-	
+
 	// Latency compensation in second
-	// If the lyrics are displayed with a delay, this value must be increased
-	// It depends on the power of your PC and the usage of your network
 	latencyCompensation: 0.250,
 
 	// Time in second for display vocal before lyric start
@@ -14,8 +12,8 @@ let poller = new SnifferPoller({
 	postVocalDisplayTime: 0.7,
 	// Number of line displayed, This value can be exceeded when it sings fast
 	numberOfLinesDisplayed: 2,
-	
-	// Max note kepping, Use for compatibility with bad length of vocal
+
+	// Max note keeping, Use for compatibility with bad length of vocal
 	maxNoteKepping: 2.5,
 
 	// HTML / CSS customization
@@ -23,17 +21,17 @@ let poller = new SnifferPoller({
 	endLyric: '</span>',
 	newLine: '<br>',
 
-	onData: function(data) {
-		
+	onData: function (data) {
+
 		// Not in song
 		if (data.currentState != STATE_SONG_PLAYING) {
 			$(".vocal").html("");
 			return;
 		}
-		
+
 		let currentTime = data.memoryReadout.songTimer + this.latencyCompensation;
 		let vocals = data.songDetails.vocals;
-		
+
 		// Song not started or song without vocals
 		if (currentTime <= 0 || vocals == null) {
 			$(".vocal").html("");
@@ -46,7 +44,7 @@ let poller = new SnifferPoller({
 			$(".vocal").html("");
 			return;
 		}
-		
+
 		// Search pre index. Only for performance
 		let part = vocalsLength / 2;
 		let index = Math.floor(part);
@@ -54,7 +52,7 @@ let poller = new SnifferPoller({
 			part /= 2;
 			if (vocals[index].Time <= currentTime) {
 				index = Math.floor(index + part);
-				
+
 			} else if (vocals[index].Time > currentTime) {
 				index = Math.floor(index - part);
 			}
@@ -63,7 +61,6 @@ let poller = new SnifferPoller({
 			}
 		}
 		// Start 40 syllables before current vocal
-		// 30 is not enought for japanese language
 		index -= 40;
 		if (index <= 0) {
 			index = 0;
@@ -83,11 +80,14 @@ let poller = new SnifferPoller({
 		let currentLine = this.beginLyric;
 		let lineNumber = 1;
 
-		const regExStartWithUpperCaseChar = /[A-Z]/;
-		
-		// TODO don't create a new line when it's start whith "I " or "I'" and the preceded word have a majuscule
-		// only in two compatibility process
-		
+		// const regExStartWithUpperCaseChar = /[A-Z]/;
+
+		// NEW: helper to wrap each syllable with a class
+		function wrapSyllable(text, cssClass) {
+			if (!text) return "";
+			return '<span class="syllable ' + cssClass + '">' + text + '</span>';
+		}
+
 		for (; index < vocalsLength; ++index) {
 
 			// Get state from vocal
@@ -97,7 +97,7 @@ let poller = new SnifferPoller({
 			if (noteKeeping > this.maxNoteKepping) {
 				noteKeeping = this.maxNoteKepping;
 			}
-			
+
 			isNextNewLine = false;
 			isNextWithoutSpace = false;
 			if (lyric.endsWith("-")) {
@@ -105,23 +105,28 @@ let poller = new SnifferPoller({
 			} else if (lyric.endsWith("+")) {
 				isNextNewLine = true;
 			}
-			
+
 			// Remove vocal state from lyric
 			if (isNextWithoutSpace || isNextNewLine) {
-				lyric = lyric.substr(0, lyric.length-1);
+				lyric = lyric.substr(0, lyric.length - 1);
 			}
-			
+
 			timeDifference = currentTime - vocal.Time;
+
+			// NEW: decide if this syllable is past / current / future
+			let syllableClass;
+			if (timeDifference < 0) {
+				// hasn't started yet
+				syllableClass = "syllable-future";
+			} else if (timeDifference > noteKeeping) {
+				// finished singing this syllable
+				syllableClass = "syllable-past";
+			} else {
+				// BETWEEN start and end: currently sung syllable
+				syllableClass = "syllable-current";
+			}
+
 			if (timeDifference >= 0) {
-				
-				// Compatibility with Rocksmith song without state in vocal
-				if (regExStartWithUpperCaseChar.test(lyric.substr(0, 1))) {
-					if (!currentLine.endsWith(this.newLine) && currentLine != this.beginLyric) {
-						isNewLineBefore = false;
-						currentLine = this.beginLyric;
-						lineNumber = 1;
-					}
-				}
 
 				// Do not display vocals too early
 				if (timeDifference + this.preVocalDisplayTime < 0) {
@@ -131,8 +136,9 @@ let poller = new SnifferPoller({
 					stopAtNextLine = true;
 				}
 
-				// Vocal before current time
-				currentLine = currentLine + lyric;
+				// Vocal before or at current time → past OR current syllable
+				currentLine = currentLine + wrapSyllable(lyric, syllableClass);
+
 				if (isNextNewLine) {
 					// If new line exist before or current vocal is during a lyric who was not terminated
 					// and when is finish display a post time defined
@@ -153,16 +159,6 @@ let poller = new SnifferPoller({
 				}
 
 			} else {
-				// Compatibility with Rocksmith song without state in vocal
-				if (regExStartWithUpperCaseChar.test(lyric.substr(0, 1))) {
-					if (!currentLine.endsWith(this.newLine) && currentLine != this.beginLyric) {
-						if (lineNumber >= this.numberOfLinesDisplayed) {
-							break;
-						}
-						currentLine += this.newLine;
-						++lineNumber;
-					}
-				}
 
 				// Do not display vocals too early
 				if (timeDifference + this.preVocalDisplayTime < 0) {
@@ -175,7 +171,10 @@ let poller = new SnifferPoller({
 					currentLine += this.endLyric;
 					isEndOfCurrent = true;
 				}
-				currentLine = currentLine + lyric;
+
+				// FUTURE syllable
+				currentLine = currentLine + wrapSyllable(lyric, syllableClass);
+
 				if (isNextNewLine) {
 					if (stopAtNextLine) {
 						break;
