@@ -195,7 +195,7 @@ namespace RockSniffer.History
                     command.Parameters.AddWithValue("@notes_hit", readout.noteData?.TotalNotesHit ?? 0);
                     command.Parameters.AddWithValue("@notes_missed", readout.noteData?.TotalNotesMissed ?? 0);
                     command.Parameters.AddWithValue("@highest_hit_streak", readout.noteData?.HighestHitStreak ?? 0);
-                    command.Parameters.AddWithValue("@accuracy", readout.noteData?.Accuracy ?? 0.0);
+                    command.Parameters.AddWithValue("@accuracy", Math.Round(readout.noteData?.Accuracy ?? 0.0, 1));
                     command.Parameters.AddWithValue("@completed", completed ? 1 : 0);
                     command.Parameters.AddWithValue("@paused", paused ? 1 : 0);
 
@@ -231,7 +231,7 @@ namespace RockSniffer.History
                 line.Append($"{readout.noteData?.TotalNotesHit ?? 0},");
                 line.Append($"{readout.noteData?.TotalNotesMissed ?? 0},");
                 line.Append($"{readout.noteData?.HighestHitStreak ?? 0},");
-                line.Append($"{(readout.noteData?.Accuracy ?? 0.0).ToString(CultureInfo.InvariantCulture)},");
+                line.Append($"{Math.Round(readout.noteData?.Accuracy ?? 0.0, 1).ToString(CultureInfo.InvariantCulture)},");
                 line.Append($"{(completed ? "True" : "False")},");
                 line.Append($"{(paused ? "True" : "False")}");
 
