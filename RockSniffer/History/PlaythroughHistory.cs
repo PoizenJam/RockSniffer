@@ -1,4 +1,5 @@
 using RockSnifferLib.RSHelpers;
+using RockSnifferLib.RSHelpers.NoteData;
 using RockSnifferLib.Sniffing;
 using System;
 using System.Data.SQLite;
@@ -11,6 +12,7 @@ namespace RockSniffer.History
     /// <summary>
     /// Handles playthrough history logging to SQL and CSV
     /// Uses EXACT timestamps from Sniffer.cs Logger.Log calls
+    /// Supports Score Attack mode with additional stats
     /// </summary>
     public class PlaythroughHistory
     {
@@ -50,7 +52,7 @@ namespace RockSniffer.History
             try
             {
                 bool isNewDatabase = !File.Exists(sqlitePath);
-                
+
                 sqliteConnection = new SQLiteConnection($"Data Source={sqlitePath};Version=3;");
                 sqliteConnection.Open();
 
@@ -91,7 +93,19 @@ namespace RockSniffer.History
                     highest_hit_streak INTEGER,
                     accuracy REAL,
                     completed INTEGER,
-                    paused INTEGER
+                    paused INTEGER,
+                    -- Score Attack specific fields (NULL for Learn A Song)
+                    total_perfect_hits INTEGER,
+                    perfect_phrases INTEGER,
+                    good_phrases INTEGER,
+                    passed_phrases INTEGER,
+                    failed_phrases INTEGER,
+                    highest_perfect_phrase_streak INTEGER,
+                    highest_good_phrase_streak INTEGER,
+                    highest_passed_phrase_streak INTEGER,
+                    highest_failed_phrase_streak INTEGER,
+                    current_score INTEGER,
+                    highest_multiplier INTEGER
                 );";
 
             using (var command = new SQLiteCommand(createTableQuery, sqliteConnection))
@@ -106,9 +120,14 @@ namespace RockSniffer.History
             {
                 if (!File.Exists(csvPath))
                 {
-                    // Create CSV with headers
+                    // Create CSV with headers including Score Attack fields
                     StringBuilder header = new StringBuilder();
-                    header.AppendLine("Timestamp,TimestampStart,TimestampEnd,SongID,SongName,ArtistName,AlbumName,AlbumYear,SongLength,ArrangementID,ArrangementPath,ArrangementTuning,GameMode,Author,TotalNotes,NotesHit,NotesMissed,HighestHitStreak,Accuracy,Completed,Paused");
+                    header.Append("Timestamp,TimestampStart,TimestampEnd,SongID,SongName,ArtistName,AlbumName,AlbumYear,SongLength,");
+                    header.Append("ArrangementID,ArrangementPath,ArrangementTuning,GameMode,Author,TotalNotes,NotesHit,NotesMissed,");
+                    header.Append("HighestHitStreak,Accuracy,Completed,Paused,");
+                    header.Append("TotalPerfectHits,PerfectPhrases,GoodPhrases,PassedPhrases,FailedPhrases,");
+                    header.Append("HighestPerfectPhraseStreak,HighestGoodPhraseStreak,HighestPassedPhraseStreak,HighestFailedPhraseStreak,");
+                    header.AppendLine("CurrentScore,HighestMultiplier");
                     File.WriteAllText(csvPath, header.ToString());
                 }
             }
@@ -165,18 +184,34 @@ namespace RockSniffer.History
         {
             try
             {
+                // Check if this is Score Attack mode
+                bool isScoreAttack = readout.mode == RSMode.SCOREATTACK;
+                ScoreAttackNoteData? saData = null;
+
+                if (isScoreAttack && readout.noteData is ScoreAttackNoteData scoreAttackData)
+                {
+                    saData = scoreAttackData;
+                }
+
                 string insertQuery = @"
                     INSERT INTO playthrough_history 
                     (timestamp, timestamp_start, timestamp_end, song_id, song_name, artist_name, album_name, album_year, song_length, 
                      arrangement_id, arrangement_path, arrangement_tuning, game_mode, author, total_notes, notes_hit, notes_missed, 
-                     highest_hit_streak, accuracy, completed, paused)
+                     highest_hit_streak, accuracy, completed, paused,
+                     total_perfect_hits, perfect_phrases, good_phrases, passed_phrases, failed_phrases,
+                     highest_perfect_phrase_streak, highest_good_phrase_streak, highest_passed_phrase_streak, highest_failed_phrase_streak,
+                     current_score, highest_multiplier)
                     VALUES 
                     (@timestamp, @timestamp_start, @timestamp_end, @song_id, @song_name, @artist_name, @album_name, @album_year, @song_length,
                      @arrangement_id, @arrangement_path, @arrangement_tuning, @game_mode, @author, @total_notes, @notes_hit, @notes_missed,
-                     @highest_hit_streak, @accuracy, @completed, @paused)";
+                     @highest_hit_streak, @accuracy, @completed, @paused,
+                     @total_perfect_hits, @perfect_phrases, @good_phrases, @passed_phrases, @failed_phrases,
+                     @highest_perfect_phrase_streak, @highest_good_phrase_streak, @highest_passed_phrase_streak, @highest_failed_phrase_streak,
+                     @current_score, @highest_multiplier)";
 
                 using (var command = new SQLiteCommand(insertQuery, sqliteConnection))
                 {
+                    // Standard fields
                     command.Parameters.AddWithValue("@timestamp", metadataTimestamp.ToString("yyyy-MM-dd HH:mm:ss"));
                     command.Parameters.AddWithValue("@timestamp_start", actualStartTimestamp.ToString("yyyy-MM-dd HH:mm:ss"));
                     command.Parameters.AddWithValue("@timestamp_end", actualEndTimestamp.ToString("yyyy-MM-dd HH:mm:ss"));
@@ -199,6 +234,19 @@ namespace RockSniffer.History
                     command.Parameters.AddWithValue("@completed", completed ? 1 : 0);
                     command.Parameters.AddWithValue("@paused", paused ? 1 : 0);
 
+                    // Score Attack specific fields (NULL if not Score Attack mode)
+                    command.Parameters.AddWithValue("@total_perfect_hits", saData?.TotalPerfectHits ?? (object)DBNull.Value);
+                    command.Parameters.AddWithValue("@perfect_phrases", saData?.PerfectPhrases ?? (object)DBNull.Value);
+                    command.Parameters.AddWithValue("@good_phrases", saData?.GoodPhrases ?? (object)DBNull.Value);
+                    command.Parameters.AddWithValue("@passed_phrases", saData?.PassedPhrases ?? (object)DBNull.Value);
+                    command.Parameters.AddWithValue("@failed_phrases", saData?.FailedPhrases ?? (object)DBNull.Value);
+                    command.Parameters.AddWithValue("@highest_perfect_phrase_streak", saData?.HighestPerfectPhraseStreak ?? (object)DBNull.Value);
+                    command.Parameters.AddWithValue("@highest_good_phrase_streak", saData?.HighestGoodPhraseStreak ?? (object)DBNull.Value);
+                    command.Parameters.AddWithValue("@highest_passed_phrase_streak", saData?.HighestPassedPhraseStreak ?? (object)DBNull.Value);
+                    command.Parameters.AddWithValue("@highest_failed_phrase_streak", saData?.HighestFailedPhraseStreak ?? (object)DBNull.Value);
+                    command.Parameters.AddWithValue("@current_score", saData?.CurrentScore ?? (object)DBNull.Value);
+                    command.Parameters.AddWithValue("@highest_multiplier", saData?.HighestMultiplier ?? (object)DBNull.Value);
+
                     command.ExecuteNonQuery();
                 }
             }
@@ -212,7 +260,18 @@ namespace RockSniffer.History
         {
             try
             {
+                // Check if this is Score Attack mode
+                bool isScoreAttack = readout.mode == RSMode.SCOREATTACK;
+                ScoreAttackNoteData? saData = null;
+
+                if (isScoreAttack && readout.noteData is ScoreAttackNoteData scoreAttackData)
+                {
+                    saData = scoreAttackData;
+                }
+
                 StringBuilder line = new StringBuilder();
+
+                // Standard fields
                 line.Append($"\"{metadataTimestamp:yyyy-MM-dd HH:mm:ss}\",");
                 line.Append($"\"{actualStartTimestamp:yyyy-MM-dd HH:mm:ss}\",");
                 line.Append($"\"{actualEndTimestamp:yyyy-MM-dd HH:mm:ss}\",");
@@ -233,7 +292,20 @@ namespace RockSniffer.History
                 line.Append($"{readout.noteData?.HighestHitStreak ?? 0},");
                 line.Append($"{Math.Round(readout.noteData?.Accuracy ?? 0.0, 1).ToString(CultureInfo.InvariantCulture)},");
                 line.Append($"{(completed ? "True" : "False")},");
-                line.Append($"{(paused ? "True" : "False")}");
+                line.Append($"{(paused ? "True" : "False")},");
+
+                // Score Attack specific fields (empty if not Score Attack)
+                line.Append($"{saData?.TotalPerfectHits.ToString() ?? ""},");
+                line.Append($"{saData?.PerfectPhrases.ToString() ?? ""},");
+                line.Append($"{saData?.GoodPhrases.ToString() ?? ""},");
+                line.Append($"{saData?.PassedPhrases.ToString() ?? ""},");
+                line.Append($"{saData?.FailedPhrases.ToString() ?? ""},");
+                line.Append($"{saData?.HighestPerfectPhraseStreak.ToString() ?? ""},");
+                line.Append($"{saData?.HighestGoodPhraseStreak.ToString() ?? ""},");
+                line.Append($"{saData?.HighestPassedPhraseStreak.ToString() ?? ""},");
+                line.Append($"{saData?.HighestFailedPhraseStreak.ToString() ?? ""},");
+                line.Append($"{saData?.CurrentScore.ToString() ?? ""},");
+                line.Append($"{saData?.HighestMultiplier.ToString() ?? ""}");
 
                 File.AppendAllText(csvPath, line.ToString() + Environment.NewLine);
             }
