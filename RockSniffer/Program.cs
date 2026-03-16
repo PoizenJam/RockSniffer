@@ -43,10 +43,14 @@ namespace RockSniffer
 
         private RSMemoryReadout memReadout = new RSMemoryReadout();
         private SongDetails details = new SongDetails();
-        private DiscordRPCHandler rpcHandler;         
+        private DiscordRPCHandler rpcHandler;
         private string gameState;
         private PlaythroughHistory playthroughHistory;
         private SongDetails currentSong;
+
+        // Stored handler for static Logger event — must be unsubscribed between Run() calls
+        // to prevent duplicate subscriptions (static events accumulate across calls)
+        private EventHandler<RockSnifferLib.Logging.EventLoggedArgs> _eventEndHandler;
 
 
         static void Main(string[] args)
@@ -107,7 +111,7 @@ namespace RockSniffer
             RockSniffer.Logging.EventLogger.eventLogMode = config.outputSettings.eventLogMode;
             RockSniffer.Logging.EventLogger.Initialize();
 
-            
+
             //Initialize cache
             cache = new SQLiteCache();
 
@@ -151,7 +155,7 @@ namespace RockSniffer
                 Logger.Log("Pre-release version, skipping version check");
                 return;
             }
-            
+
             try
             {
                 //Use TLS
@@ -281,9 +285,9 @@ namespace RockSniffer
                 Console.ReadKey();
                 Environment.Exit(0);
             }
-            
+
             var edition = rocksmithEditionHashes[hash];
-            
+
             Logger.Log("Detected Rocksmith edition: {0}", edition);
 
             //Initialize file handle reader and memory reader
@@ -292,7 +296,7 @@ namespace RockSniffer
             //Listen for events
             sniffer.OnSongChanged += Sniffer_OnCurrentSongChanged;
             sniffer.OnMemoryReadout += Sniffer_OnMemoryReadout;
-            
+
             //Add playthrough history listeners
             if (playthroughHistory != null)
             {
@@ -308,9 +312,15 @@ namespace RockSniffer
                 };
 
                 // Actual gameplay end (when Sniffer.cs logs EVENT=END)
-                RockSnifferLib.Logging.Logger.OnEventEndLogged += (sender, e) => {
+                // Unsubscribe previous handler to prevent duplicate logging
+                // (Logger.OnEventEndLogged is STATIC and persists across Run() calls)
+                if (_eventEndHandler != null)
+                    RockSnifferLib.Logging.Logger.OnEventEndLogged -= _eventEndHandler;
+
+                _eventEndHandler = (sender, e) => {
                     playthroughHistory.OnActualSongEnd(e, currentSong, memReadout, sniffer.Completed, sniffer.Paused);
                 };
+                RockSnifferLib.Logging.Logger.OnEventEndLogged += _eventEndHandler;
             }
 
             //Add RPC event listeners
