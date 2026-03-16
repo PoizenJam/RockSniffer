@@ -1,36 +1,119 @@
-# RockSniffer
-RockSniffer is an application designed for Rocksmith 2014 streamers.
-It allows you to display the currently played song and some gameplay stats automatically in realtime.
+# RockSniffer_PJ
 
-RockSniffer_PJ is an altered fork of the original RockSniffer with enhanced playtracking status and more robust logging. 
-The fork will track whether a song has been paused or restarted, and outputs times-stamped song-details on song start and end. 
-The intended use case is to enhance stat tracking and video editing capabilities, as the time-stamps can be used to cut individual song videos from larger recordings.
+An enhanced fork of [kokolihapihvi's RockSniffer](https://github.com/kokolihapihvi/RockSniffer) for Rocksmith 2014 streamers and players who want deeper insight into their sessions.
 
-## ADDITIONAL FEATURES
-- Output of 'game_stage.txt', which tracks Rocksmith's internal game state (i.e., whether you are in a song or in menus)
-- Output of 'game_state.txt', which tracks Rocksmith's status using Rocksniffer (includes Pause and Restart detection!)
-- Logs times with millisecond precision
-- Logs song details and player stats on output, stored in 'sniffer.log'. Includes whether the song was ever paused or restarted AND CDLC author!
+RockSniffer_PJ adds pause/resume detection, structured playthrough history logging, Score Attack stat tracking, and configurable event output — features designed for stat tracking, stream automation, and post-session video editing.
 
-### Example Log Ouput:
-[2024-01-25 20:42:12.409] EVENT=START;artist=Rush;album=A Farewell to Kings;year=1977;song=Closer to the Heart;length=182.345;path=Bass;tuning=E Standard;author=Ubisoft;<br />
-[2024-01-25 20:42:16.145] Song Paused!<br />
-[2024-01-25 20:42:21.235] Song Resumed!<br />
-[2024-01-25 20:42:16.145] Song Paused!<br />
-[2024-01-25 20:42:28.608] EVENT=END;completed=False;paused=True;accuracy=100%;totalNotes=0;notesHit=0;highestStreak=0;<br />
-[2024-01-25 20:42:28.937] EVENT=START;artist=Rush;album=A Farewell to Kings;year=1977;song=Closer to the Heart;length=182.345;path=Bass;tuning=E Standard;author=Ubisoft;<br />
-[2024-01-25 20:45:28.516] EVENT=END;completed=True;paused=False;accuracy=98.2%;totalNotes=451;notesHit=443;highestStreak=157;<br />
+Requires the companion [RockSnifferLib](https://github.com/PoizenJam/RockSnifferLib) fork.
 
-Note: This shows the output of a song starting, pausing, resuming, pausing, restarting, then finishing! Note the 'Completed' and 'Paused' status in the EVENT=END status.
-Log can be easily parsed into different formats such as CSV or JSON.
+---
 
-Requires custom [RockSnifferLib] fork @: (https://github.com/PoizenJam/RockSnifferLib)
+## Features Added Over Base RockSniffer
 
-# RockSniffer Setup
-Go here for a quick guide how to set up RockSniffer: [RockSniffer Wiki](https://github.com/kokolihapihvi/RockSniffer/wiki/Set-Up)
+### Pause & Resume Detection
 
-## NOTE
+RockSniffer_PJ detects when a song is paused and resumed in real time. This is achieved through a stall-counter system that monitors the game's internal song timer for consecutive stalled reads, with guards to prevent false positives near the start and end of songs.
 
-Please note that this version may increase the overhead and write activity compared to the normal Rocksniffer.
-It may also be prone to bugs not present in the main Rocksniffer distribution.
-If you do not need the features listed above, please download the main Rocksniffer distro.
+When a pause is detected, the sniffer state transitions to `SONG_PAUSED`. Downstream events (resume, restart, quit-from-pause) are tracked accordingly. The `paused` flag is carried through to all end-of-song logging, so you always know whether a playthrough involved a pause.
+
+### Game State & Game Stage Output
+
+Two new output files are available for use in OBS or other streaming tools:
+
+- **`game_state.txt`** — The sniffer's high-level state machine value (e.g., `IN_MENUS`, `SONG_PLAYING`, `SONG_PAUSED`, `SONG_ENDING`). Useful for triggering OBS scene switches.
+- **`game_stage.txt`** — Rocksmith's own internal game stage string, read directly from memory.
+
+Both are configured via `config/output.json` using the `%GAME_STATE%` and `%GAME_STAGE%` format tokens.
+
+### Playthrough History (SQLite & CSV)
+
+Every song playthrough is logged to a persistent database and/or CSV file with full metadata and performance stats. Enable in `config/output.json`:
+
+```json
+{
+  "enableSqliteHistory": true,
+  "sqliteHistoryPath": "playthrough_history.db",
+  "enableCsvHistory": true,
+  "csvHistoryPath": "playthrough_history.csv"
+}
+```
+
+Each record includes:
+
+- **Timestamps** — When the song was selected, when gameplay actually started, and when it ended
+- **Song metadata** — Song name, artist, album, year, song length, CDLC author
+- **Arrangement details** — Arrangement path (Lead/Rhythm/Bass), tuning
+- **Performance stats** — Total notes, notes hit, notes missed, highest streak, accuracy
+- **Session flags** — Whether the song was completed, whether it was paused at any point
+- **Score Attack stats** (when applicable) — Perfect/good/passed/failed phrases, phrase streaks, score, multiplier
+
+The three-timestamp design (metadata load, actual start, actual end) enables precise alignment with stream recordings for post-session video editing.
+
+### Score Attack Support
+
+When playing in Score Attack mode, RockSniffer_PJ reads and logs the full set of Score Attack-specific stats from game memory, including perfect hits, phrase ratings (perfect/good/passed/failed), phrase streaks, current score, and highest multiplier. These are included in both the event log and playthrough history.
+
+### Configurable Event Logging
+
+EVENT=START and EVENT=END log output is controlled by the `eventLogMode` setting in `config/output.json`:
+
+- **`"disabled"`** — No event output to console or sniffer.log (history logging still works independently)
+- **`"legacy"`** — Single-line format matching the original sniffer log style
+- **`"enabled"`** — Human-readable multi-line format with labeled fields
+
+### Custom Arcade OBS Overlays
+
+Includes two custom browser-source overlays for OBS:
+
+- **Arcade_v1_LaS** — Arcade-styled current song display for Learn a Song mode
+- **Arcade_v1_SA** — Arcade-styled current song display for Score Attack mode, showing score and multiplier
+
+Both feature custom fonts, color-coded accuracy ratings, and configurable sizing. See the README files in each addon folder for customization options.
+
+---
+
+## Example Log Output
+
+```
+[2026-03-05 21:03:08] EVENT=START;artist=Dio;album=Holy Diver;year=1983;song=Rainbow in the Dark;length=249.703;path=Bass;tuning=E Standard;author=Ubisoft;
+[2026-03-05 21:07:16] EVENT=END;completed=True;paused=False;accuracy=99.8%;totalNotes=662;notesHit=661;highestStreak=401;
+```
+
+With a pause mid-song:
+
+```
+[2026-03-05 21:10:00] EVENT=START;artist=Rush;album=Moving Pictures;year=1981;song=Limelight;length=271.69;path=Bass;tuning=E Standard;author=Ubisoft;
+[2026-03-05 21:12:30] Song Paused! (timer stalled at 150.234 for 5 reads)
+[2026-03-05 21:12:45] Song Resumed!
+[2026-03-05 21:15:10] EVENT=END;completed=True;paused=True;accuracy=99.3%;totalNotes=735;notesHit=730;highestStreak=227;
+```
+
+Score Attack mode includes additional stats:
+
+```
+EVENT=END;completed=True;paused=False;accuracy=99.3%;totalNotes=735;notesHit=730;highestStreak=227;Mode=true;TotalPerfectHits=710;PerfectPhrases=12;GoodPhrases=3;PassedPhrases=0;FailedPhrases=0;HighestPerfectPhraseStreak=8;HighestGoodPhraseStreak=2;HighestPassedPhraseStreak=0;HighestFailedPhraseStreak=0;CurrentScore=125000;HighestMultiplier=4;
+```
+
+---
+
+## Setup
+
+Base setup is the same as the original RockSniffer — see the [RockSniffer Wiki](https://github.com/kokolihapihvi/RockSniffer/wiki/Set-Up) for initial configuration.
+
+To enable PJ-specific features, edit `config/output.json` and set:
+
+- `enableSqliteHistory` / `enableCsvHistory` to `true` for playthrough logging
+- `eventLogMode` to `"legacy"` or `"enabled"` for event console/log output
+- The default output dictionary already includes `game_state.txt` and `game_stage.txt`
+
+---
+
+## Note
+
+This fork adds additional memory reads, file writes, and processing compared to the base RockSniffer. If you don't need pause detection, playthrough history, or Score Attack stats, the [main RockSniffer distribution](https://github.com/kokolihapihvi/RockSniffer) will have lower overhead.
+
+---
+
+## Credits
+
+Original RockSniffer by [kokolihapihvi](https://github.com/kokolihapihvi/RockSniffer). PJ fork enhancements by [PoizenJam](https://github.com/PoizenJam).
