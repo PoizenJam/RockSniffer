@@ -1,29 +1,45 @@
 @import url('https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,opsz,wght@0,6..12,200..1000;1,6..12,200..1000&display=swap');
+
 :root {
-    --rocksmith-blue: #1189cd; 
+    --rocksmith-blue: #1189cd;
     --darkest: #0b0e0f; /* dark black */
-    --rocksmith-grey: #424242;  
-  }
+    --rocksmith-white: #ffffff;
+    --rocksmith-grey: #424242;
+}
 
 body {
-	font-family: "Nunito Sans", sans-serif;
+    font-family: "Nunito Sans", sans-serif;
     font-optical-sizing: auto;
-    font-weight: 800;    
+    font-weight: 800;
     font-style: normal;
     font-variation-settings: "wdth" 100, "YTLC" 500;
-	font-size: 36px;
-	padding: 4px;
-	margin: 0;
-	text-align: left;
+    font-size: 36px;
+    padding: 4px;
+    margin: 0;
+    text-align: left;
     text-shadow: 2px 2px 2px black;
 }
 
-/* All text */
-div.vocal {   
-    color: var(--rocksmith-grey); 
+/* Generic syllable span */
+span.syllable {
+    padding: 0 2px;
+    font-weight: 800; /* match body font-weight to prevent jitter */
 }
 
-/* Active text */
-span.lyric {
-	color: var(--rocksmith-blue);
+/* COMPLETED syllables */
+span.syllable-past {
+    color: var(--rocksmith-grey);
+    opacity: 0.7;
+}
+
+/* CURRENT syllable */
+span.syllable-current {
+    color: var(--rocksmith-blue);
+    /* no font-weight change */
+    text-shadow: 0 0 6px black; /* glow instead of size change */
+}
+
+/* FUTURE syllables */
+span.syllable-future {
+    color: var(--rocksmith-white);
 }

@@ -1,0 +1,35 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+
+:root {
+    --twitch-purple: #9146FF;    /* Signature Purple */
+    --twitch-vibrant: #bf94ff;   /* Lighter Purple for readability */
+    --twitch-bg-dark: #0e0e10;   /* Twitch Body Background */
+    --twitch-bg-alt: #18181b;    /* Twitch Component Background */
+    --twitch-text-muted: #adadb8; /* Muted text color */
+    --white: #efeff1;
+}
+  
+body {
+    font-family: "Inter", "Roobert", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 36px;
+    padding: 4px;
+    margin: 0;
+    text-align: left;
+    color: var(--white);
+}
+
+/* All text container */
+div.vocal {       
+    padding-left: 16px;
+    border-radius: 0 4px 4px 0;    /* Twitch uses more angular/slightly rounded corners */
+    color: var(--twitch-text-muted);     
+    background-color: rgba(14, 14, 16, 0.95); /* Deep Twitch dark mode background */
+    border-left: 4px solid var(--twitch-purple); /* Added a purple accent bar common in Twitch UI */
+}
+
+/* Active text */
+span.lyric {
+    color: var(--twitch-vibrant);
+    font-weight: 700; /* Makes the active lyric pop more */
+    text-shadow: 0 0 10px rgba(145, 70, 255, 0.4); /* Subtle purple glow */
+}
