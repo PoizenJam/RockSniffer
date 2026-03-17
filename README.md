@@ -1,8 +1,8 @@
-# RockSniffer_PJ
+# RockSniffer
 
 An enhanced fork of [kokolihapihvi's RockSniffer](https://github.com/kokolihapihvi/RockSniffer) for Rocksmith 2014 streamers and players who want deeper insight into their sessions.
 
-RockSniffer_PJ adds pause/resume detection, structured playthrough history logging, Score Attack stat tracking, and configurable event output — features designed for stat tracking, stream automation, and post-session video editing.
+RockSniffer adds pause/resume detection, structured playthrough history logging, Score Attack stat tracking, and configurable event output — features designed for stat tracking, stream automation, and post-session video editing.
 
 Requires the companion [RockSnifferLib](https://github.com/PoizenJam/RockSnifferLib) fork.
 
@@ -12,7 +12,7 @@ Requires the companion [RockSnifferLib](https://github.com/PoizenJam/RockSniffer
 
 ### Pause & Resume Detection
 
-RockSniffer_PJ detects when a song is paused and resumed in real time. This is achieved through a stall-counter system that monitors the game's internal song timer for consecutive stalled reads, with guards to prevent false positives near the start and end of songs.
+Rocksniffer detects when a song is paused and resumed in real time. This is achieved through a stall-counter system that monitors the game's internal song timer for consecutive stalled reads, with guards to prevent false positives near the start and end of songs.
 
 When a pause is detected, the sniffer state transitions to `SONG_PAUSED`. Downstream events (resume, restart, quit-from-pause) are tracked accordingly. The `paused` flag is carried through to all end-of-song logging, so you always know whether a playthrough involved a pause.
 
