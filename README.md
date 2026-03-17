@@ -115,4 +115,4 @@ This fork adds additional memory reads, file writes, and processing compared to 
 
 ## Credits
 
-Original RockSniffer by [kokolihapihvi](https://github.com/kokolihapihvi/RockSniffer). PJ fork enhancements by [PoizenJam](https://github.com/PoizenJam).
+Original RockSniffer by [kokolihapihvi](https://github.com/kokolihapihvi/RockSniffer). Fork enhancements by [PoizenJam](https://github.com/PoizenJam).
