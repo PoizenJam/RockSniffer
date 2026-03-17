@@ -49,10 +49,6 @@ Each record includes:
 
 The three-timestamp design (metadata load, actual start, actual end) enables precise alignment with stream recordings for post-session video editing.
 
-### Score Attack Support
-
-When playing in Score Attack mode, RockSniffer_PJ reads and logs the full set of Score Attack-specific stats from game memory, including perfect hits, phrase ratings (perfect/good/passed/failed), phrase streaks, current score, and highest multiplier. These are included in both the event log and playthrough history.
-
 ### Configurable Event Logging
 
 EVENT=START and EVENT=END log output is controlled by the `eventLogMode` setting in `config/output.json`:
@@ -60,15 +56,6 @@ EVENT=START and EVENT=END log output is controlled by the `eventLogMode` setting
 - **`"disabled"`** — No event output to console or sniffer.log (history logging still works independently)
 - **`"legacy"`** — Single-line format matching the original sniffer log style
 - **`"enabled"`** — Human-readable multi-line format with labeled fields
-
-### Custom Arcade OBS Overlays
-
-Includes two custom browser-source overlays for OBS:
-
-- **Arcade_v1_LaS** — Arcade-styled current song display for Learn a Song mode
-- **Arcade_v1_SA** — Arcade-styled current song display for Score Attack mode, showing score and multiplier
-
-Both feature custom fonts, color-coded accuracy ratings, and configurable sizing. See the README files in each addon folder for customization options.
 
 ---
 
@@ -93,6 +80,18 @@ Score Attack mode includes additional stats:
 ```
 EVENT=END;completed=True;paused=False;accuracy=99.3%;totalNotes=735;notesHit=730;highestStreak=227;Mode=true;TotalPerfectHits=710;PerfectPhrases=12;GoodPhrases=3;PassedPhrases=0;FailedPhrases=0;HighestPerfectPhraseStreak=8;HighestGoodPhraseStreak=2;HighestPassedPhraseStreak=0;HighestFailedPhraseStreak=0;CurrentScore=125000;HighestMultiplier=4;
 ```
+
+### Score Attack Support
+
+When playing in Score Attack mode, RockSniffer reads and logs the full set of Score Attack-specific stats from game memory, including perfect hits, phrase ratings (perfect/good/passed/failed), phrase streaks, current score, and highest multiplier. These are included in both the event log and playthrough history.
+
+### Improved Tuning Dictionary
+
+Greratly increased ability to detect rare or exotic tunings, as well as compensate for some common 'errors' seen in CDLC (i.e., bass charts not setting offsets for B and e string). If a match in the tuning dictionary is not found, the program will fall back to simply displaying the raw string tuning. 
+
+### Improved Vocal Overlay
+
+Vocal overlay has been improved, adding multiple themes (kick, twitch, rocksmith-style) and improving the javascript execution such that lyrics are displayed more or less identical to in-game lyrics, with the same style of line breaks, highlighting, and marking for completed lyrics.
 
 ---
 
