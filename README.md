@@ -1,6 +1,6 @@
 # RockSniffer
 
-An enhanced fork of [kokolihapihvi's RockSniffer](https://github.com/kokolihapihvi/RockSniffer) for Rocksmith 2014 streamers and players who want deeper insight into their sessions.
+A fork of [kokolihapihvi's RockSniffer](https://github.com/kokolihapihvi/RockSniffer) for Rocksmith 2014 with additional features for streamers and players who want more automation and logging functionality.
 
 RockSniffer adds pause/resume detection, structured playthrough history logging, Score Attack stat tracking, and configurable event output — features designed for stat tracking, stream automation, and post-session video editing.
 
@@ -8,7 +8,7 @@ Requires the companion [RockSnifferLib](https://github.com/PoizenJam/RockSniffer
 
 ---
 
-## Features Added Over Base RockSniffer
+## Features Added
 
 ### Pause & Resume Detection
 
@@ -81,10 +81,6 @@ Score Attack mode includes additional stats:
 EVENT=END;completed=True;paused=False;accuracy=99.3%;totalNotes=735;notesHit=730;highestStreak=227;Mode=true;TotalPerfectHits=710;PerfectPhrases=12;GoodPhrases=3;PassedPhrases=0;FailedPhrases=0;HighestPerfectPhraseStreak=8;HighestGoodPhraseStreak=2;HighestPassedPhraseStreak=0;HighestFailedPhraseStreak=0;CurrentScore=125000;HighestMultiplier=4;
 ```
 
-### Score Attack Support
-
-When playing in Score Attack mode, RockSniffer reads and logs the full set of Score Attack-specific stats from game memory, including perfect hits, phrase ratings (perfect/good/passed/failed), phrase streaks, current score, and highest multiplier. These are included in both the event log and playthrough history.
-
 ### Improved Tuning Dictionary
 
 Greratly increased ability to detect rare or exotic tunings, as well as compensate for some common 'errors' seen in CDLC (i.e., bass charts not setting offsets for B and e string). If a match in the tuning dictionary is not found, the program will fall back to simply displaying the raw string tuning. 
@@ -109,10 +105,10 @@ To enable PJ-specific features, edit `config/output.json` and set:
 
 ## Note
 
-This fork adds additional memory reads, file writes, and processing compared to the base RockSniffer. If you don't need pause detection, playthrough history, or Score Attack stats, the [main RockSniffer distribution](https://github.com/kokolihapihvi/RockSniffer) will have lower overhead.
+This fork adds additional memory reads, file writes, and processing compared to the base RockSniffer. If you don't need pause detection, playthrough history, or Score Attack stats, the [main RockSniffer distribution](https://github.com/kokolihapihvi/RockSniffer) will almost certainly be more stable and efficient.
 
 ---
 
 ## Credits
 
-Original RockSniffer by [kokolihapihvi](https://github.com/kokolihapihvi/RockSniffer). Fork enhancements by [PoizenJam](https://github.com/PoizenJam).
+Original RockSniffer by [kokolihapihvi](https://github.com/kokolihapihvi/RockSniffer). Additional features by [PoizenJam](https://github.com/PoizenJam).
