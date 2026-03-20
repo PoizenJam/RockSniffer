@@ -1,4 +1,19 @@
-@import url('https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,opsz,wght@0,6..12,200..1000;1,6..12,200..1000&display=swap');
+/* Load Google Fonts Locally */
+@font-face {
+    font-family: 'Nunito Sans';
+    src: url('./fonts/NunitoSans-VariableFont_YTLC,opsz,wdth,wght.ttf') format('truetype-variations');
+    font-weight: 200 1000;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Nunito Sans';
+    src: url('./fonts/NunitoSans-Italic-VariableFont_YTLC,opsz,wdth,wght.ttf') format('truetype-variations');
+    font-weight: 200 1000;
+    font-style: italic;
+    font-display: swap;
+}
 
 :root {
     --rocksmith-blue: #1189cd;
