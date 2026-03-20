@@ -1,18 +1,18 @@
-# RockSniffer_PJ
+# RockSniffer
 
-An enhanced fork of [kokolihapihvi's RockSniffer](https://github.com/kokolihapihvi/RockSniffer) for Rocksmith 2014 streamers and players who want deeper insight into their sessions.
+A fork of [kokolihapihvi's RockSniffer](https://github.com/kokolihapihvi/RockSniffer) for Rocksmith 2014 with additional features for streamers and players who want more automation and logging functionality.
 
-RockSniffer_PJ adds pause/resume detection, structured playthrough history logging, Score Attack stat tracking, and configurable event output — features designed for stat tracking, stream automation, and post-session video editing.
+RockSniffer adds pause/resume detection, structured playthrough history logging, Score Attack stat tracking, and configurable event output — features designed for stat tracking, stream automation, and post-session video editing.
 
 Requires the companion [RockSnifferLib](https://github.com/PoizenJam/RockSnifferLib) fork.
 
 ---
 
-## Features Added Over Base RockSniffer
+## Features Added
 
 ### Pause & Resume Detection
 
-RockSniffer_PJ detects when a song is paused and resumed in real time. This is achieved through a stall-counter system that monitors the game's internal song timer for consecutive stalled reads, with guards to prevent false positives near the start and end of songs.
+Rocksniffer detects when a song is paused and resumed in real time. This is achieved through a stall-counter system that monitors the game's internal song timer for consecutive stalled reads, with guards to prevent false positives near the start and end of songs.
 
 When a pause is detected, the sniffer state transitions to `SONG_PAUSED`. Downstream events (resume, restart, quit-from-pause) are tracked accordingly. The `paused` flag is carried through to all end-of-song logging, so you always know whether a playthrough involved a pause.
 
@@ -49,10 +49,6 @@ Each record includes:
 
 The three-timestamp design (metadata load, actual start, actual end) enables precise alignment with stream recordings for post-session video editing.
 
-### Score Attack Support
-
-When playing in Score Attack mode, RockSniffer_PJ reads and logs the full set of Score Attack-specific stats from game memory, including perfect hits, phrase ratings (perfect/good/passed/failed), phrase streaks, current score, and highest multiplier. These are included in both the event log and playthrough history.
-
 ### Configurable Event Logging
 
 EVENT=START and EVENT=END log output is controlled by the `eventLogMode` setting in `config/output.json`:
@@ -60,15 +56,6 @@ EVENT=START and EVENT=END log output is controlled by the `eventLogMode` setting
 - **`"disabled"`** — No event output to console or sniffer.log (history logging still works independently)
 - **`"legacy"`** — Single-line format matching the original sniffer log style
 - **`"enabled"`** — Human-readable multi-line format with labeled fields
-
-### Custom Arcade OBS Overlays
-
-Includes two custom browser-source overlays for OBS:
-
-- **Arcade_v1_LaS** — Arcade-styled current song display for Learn a Song mode
-- **Arcade_v1_SA** — Arcade-styled current song display for Score Attack mode, showing score and multiplier
-
-Both feature custom fonts, color-coded accuracy ratings, and configurable sizing. See the README files in each addon folder for customization options.
 
 ---
 
@@ -94,6 +81,14 @@ Score Attack mode includes additional stats:
 EVENT=END;completed=True;paused=False;accuracy=99.3%;totalNotes=735;notesHit=730;highestStreak=227;Mode=true;TotalPerfectHits=710;PerfectPhrases=12;GoodPhrases=3;PassedPhrases=0;FailedPhrases=0;HighestPerfectPhraseStreak=8;HighestGoodPhraseStreak=2;HighestPassedPhraseStreak=0;HighestFailedPhraseStreak=0;CurrentScore=125000;HighestMultiplier=4;
 ```
 
+### Improved Tuning Dictionary
+
+Greratly increased ability to detect rare or exotic tunings, as well as compensate for some common 'errors' seen in CDLC (i.e., bass charts not setting offsets for B and e string). If a match in the tuning dictionary is not found, the program will fall back to simply displaying the raw string tuning. 
+
+### Improved Vocal Overlay
+
+Vocal overlay has been improved, adding multiple themes (kick, twitch, rocksmith-style) and improving the javascript execution such that lyrics are displayed more or less identical to in-game lyrics, with the same style of line breaks, highlighting, and marking for completed lyrics.
+
 ---
 
 ## Setup
@@ -110,10 +105,10 @@ To enable PJ-specific features, edit `config/output.json` and set:
 
 ## Note
 
-This fork adds additional memory reads, file writes, and processing compared to the base RockSniffer. If you don't need pause detection, playthrough history, or Score Attack stats, the [main RockSniffer distribution](https://github.com/kokolihapihvi/RockSniffer) will have lower overhead.
+This fork adds additional memory reads, file writes, and processing compared to the base RockSniffer. If you don't need pause detection, playthrough history, or Score Attack stats, the [main RockSniffer distribution](https://github.com/kokolihapihvi/RockSniffer) will almost certainly be more stable and efficient.
 
 ---
 
 ## Credits
 
-Original RockSniffer by [kokolihapihvi](https://github.com/kokolihapihvi/RockSniffer). PJ fork enhancements by [PoizenJam](https://github.com/PoizenJam).
+Original RockSniffer by [kokolihapihvi](https://github.com/kokolihapihvi/RockSniffer). Additional features by [PoizenJam](https://github.com/PoizenJam).
