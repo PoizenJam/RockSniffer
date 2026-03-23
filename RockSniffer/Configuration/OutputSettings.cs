@@ -36,10 +36,7 @@ namespace RockSniffer.Configuration
         public string csvHistoryPath = "playthrough_history.csv";
 
         // EVENT START/END log output mode
-        // "disabled" - No EVENT logs
-        // "legacy" - Same format as original Sniffer.cs
-        // "pretty" - Human-readable format
-        public string eventLogMode = "disabled";
+        public EventLogMode eventLogMode = EventLogMode.Disabled;
 
         //Convert dictionary to array
         private void ConvertToArray()

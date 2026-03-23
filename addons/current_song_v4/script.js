@@ -208,12 +208,12 @@ var app = new Vue({
 });
 
 function formatTimer(time) {
-	var minutes = Math.floor(time/60);
-	var seconds = time % 60;
-
 	if(time < 0) {
 		return "";
 	}
+
+	var minutes = Math.floor(time / 60);
+	var seconds = time % 60;
 
 	return [minutes,seconds].map(X => ('0' + Math.floor(X)).slice(-2)).join(':')
 }

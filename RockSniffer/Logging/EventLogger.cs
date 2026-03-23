@@ -1,3 +1,4 @@
+using RockSniffer.Configuration;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -10,7 +11,7 @@ namespace RockSniffer.Logging
     /// </summary>
     public static class EventLogger
     {
-        public static string eventLogMode = "disabled"; // "disabled", "enabled", "legacy"
+        public static EventLogMode eventLogMode = EventLogMode.Disabled;
 
         public static void Initialize()
         {
@@ -21,12 +22,12 @@ namespace RockSniffer.Logging
 
         private static void OnEventStart(object sender, RockSnifferLib.Logging.EventLoggedArgs e)
         {
-            if (eventLogMode == "disabled") return;
-            if (eventLogMode == "enabled")
+            if (eventLogMode == EventLogMode.Disabled) return;
+            if (eventLogMode == EventLogMode.Enabled)
             {
                 LogPrettyStart(e.Timestamp, e.Message);
             }
-            else if (eventLogMode == "legacy")
+            else if (eventLogMode == EventLogMode.Legacy)
             {
                 LogLegacy(e.Timestamp, e.Message);
             }
@@ -34,12 +35,12 @@ namespace RockSniffer.Logging
 
         private static void OnEventEnd(object sender, RockSnifferLib.Logging.EventLoggedArgs e)
         {
-            if (eventLogMode == "disabled") return;
-            if (eventLogMode == "enabled")
+            if (eventLogMode == EventLogMode.Disabled) return;
+            if (eventLogMode == EventLogMode.Enabled)
             {
                 LogPrettyEnd(e.Timestamp, e.Message);
             }
-            else if (eventLogMode == "legacy")
+            else if (eventLogMode == EventLogMode.Legacy)
             {
                 LogLegacy(e.Timestamp, e.Message);
             }
@@ -97,7 +98,6 @@ namespace RockSniffer.Logging
         {
             var data = new Dictionary<string, string>();
             
-            // Split by semicolon
             string[] parts = message.Split(';');
             foreach (string part in parts)
             {
