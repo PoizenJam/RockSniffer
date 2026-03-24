@@ -52,6 +52,8 @@ namespace RockSniffer
         // to prevent duplicate subscriptions (static events accumulate across calls)
         private EventHandler<RockSnifferLib.Logging.EventLoggedArgs> _eventEndHandler;
 
+        // Cache of last-written content per output file to avoid redundant disk writes
+        private Dictionary<string, string> _outputCache = new Dictionary<string, string>();
 
         static void Main(string[] args)
         {
@@ -350,7 +352,7 @@ namespace RockSniffer
                 //GOTTA GO FAST
                 Thread.Sleep(1000);
 
-                if (random.Next(100) == 0)
+                if (config.outputSettings.sniffSniff && random.Next(100) == 0)
                 {
                     Console.WriteLine("*sniff sniff*");
                 }
@@ -401,7 +403,6 @@ namespace RockSniffer
 
         private void OutputDetails()
         {
-            //TODO: remember state of each file and only update the ones that have changed!
             foreach (OutputFile of in config.outputSettings.output)
             {
                 //Clone the output text format so we can replace strings in it without changing the original
@@ -448,13 +449,23 @@ namespace RockSniffer
                 outputtext = outputtext.Replace("%TOTAL_NOTES%", nd.TotalNotes.ToString());
                 outputtext = outputtext.Replace("%CURRENT_ACCURACY%", FormatPercentage(nd.Accuracy));
 
-                //Write to output
+                //Only write to disk if content has changed since last cycle
+                string cachedValue;
+                if (_outputCache.TryGetValue(of.filename, out cachedValue) && cachedValue == outputtext)
+                {
+                    continue;
+                }
+
+                _outputCache[of.filename] = outputtext;
                 WriteTextToFileLocking("output/" + of.filename, outputtext);
             }
         }
 
         private void ClearOutput()
         {
+            //Clear output cache
+            _outputCache.Clear();
+
             //Clear all output files
             foreach (OutputFile of in config.outputSettings.output)
             {

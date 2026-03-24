@@ -31,12 +31,15 @@ namespace RockSniffer.Configuration
 
         // Playthrough history settings
         public bool enableSqliteHistory = false;
-        public string sqliteHistoryPath = "playthrough_history.db";
+        public string sqliteHistoryPath = "output/playthrough_history.db";
         public bool enableCsvHistory = false;
-        public string csvHistoryPath = "playthrough_history.csv";
+        public string csvHistoryPath = "output/playthrough_history.csv";
 
         // EVENT START/END log output mode
         public EventLogMode eventLogMode = EventLogMode.Disabled;
+
+        // Easter egg: random *sniff sniff* console messages
+        public bool sniffSniff = true;
 
         //Convert dictionary to array
         private void ConvertToArray()

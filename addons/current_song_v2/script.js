@@ -1,4 +1,4 @@
-var poller = new SnifferPoller({
+const poller = new SnifferPoller({
 	interval: 500,
 
 	onData: function(data) {
@@ -17,9 +17,9 @@ var poller = new SnifferPoller({
 	}
 });
 
-var tracker = new PlaythroughTracker(poller);
+const tracker = new PlaythroughTracker(poller);
 
-var app = new Vue({
+const app = new Vue({
 	el: "#app",
 	data: {
 		visible: false,
@@ -78,8 +78,8 @@ var app = new Vue({
 			if(this.song == null) {return null;}
 			if(this.song.arrangements == null) {return null;}
 
-			for (var i = this.song.arrangements.length - 1; i >= 0; i--) {
-				var arrangement = this.song.arrangements[i];
+			for (let i = this.song.arrangements.length - 1; i >= 0; i--) {
+				let arrangement = this.song.arrangements[i];
 
 				if(arrangement.arrangementID == this.readout.arrangementID) {
 					return arrangement;
@@ -89,16 +89,16 @@ var app = new Vue({
 			return null;
 		},
 		sections: function() {
-			var arrangement = this.arrangement;
+			let arrangement = this.arrangement;
 
 			if(arrangement == null) {return null;}
 
-			var sections = arrangement.sections;
+			let sections = arrangement.sections;
 
-			var songLength = this.song.songLength;
+			let songLength = this.song.songLength;
 
-			for (var i = 0; i < sections.length; i++) {
-				var section = sections[i];
+			for (let i = 0; i < sections.length; i++) {
+				let section = sections[i];
 
 				if(this.readout.songTimer < section.endTime) {
 					break;
@@ -155,8 +155,8 @@ var app = new Vue({
 			if(this.prevSong == null) {return null;}
 			if(this.prevSong.arrangements == null) {return null;}
 
-			for (var i = this.prevSong.arrangements.length - 1; i >= 0; i--) {
-				var arrangement = this.prevSong.arrangements[i];
+			for (let i = this.prevSong.arrangements.length - 1; i >= 0; i--) {
+				let arrangement = this.prevSong.arrangements[i];
 
 				if(arrangement.arrangementID == this.prevReadout.arrangementID) {
 					return arrangement;
@@ -166,16 +166,16 @@ var app = new Vue({
 			return null;
 		},
 		prevSections: function() {
-			var arrangement = this.prevArrangement;
+			let arrangement = this.prevArrangement;
 
 			if(arrangement == null) {return null;}
 
-			var sections = arrangement.sections;
+			let sections = arrangement.sections;
 
-			var songLength = this.prevSong.songLength;
+			const songLength = this.prevSong.songLength;
 
-			for (var i = 0; i < sections.length; i++) {
-				var section = sections[i];
+			for (let i = 0; i < sections.length; i++) {
+				let section = sections[i];
 
 				section.length = section.endTime - section.startTime;
 
@@ -214,25 +214,25 @@ function formatTimer(time) {
 		return "";
 	}
 
-	var minutes = Math.floor(time / 60);
-	var seconds = time % 60;
+	const minutes = Math.floor(time / 60);
+	const seconds = time % 60;
 
 	return [minutes, seconds].map(X => ('0' + Math.floor(X)).slice(-2)).join(':')
 }
 
-var hideTimeout = null;
+let hideTimeout = null;
 function generateFeedback() {
 	app.feedback = [];
 
-	var arrangement = poller.getCurrentArrangement();
-	var sections = arrangement.sections;
-	var feedback = []
+	const arrangement = poller.getCurrentArrangement();
+	const sections = arrangement.sections;
+	let feedback = []
 
-	var greens = 0;
+	let greens = 0;
 
-	for (var i = sections.length - 1; i >= 0; i--) {
-		var section = sections[i];
-		var rel = tracker.getRelative(section.endTime);
+	for (let i = sections.length - 1; i >= 0; i--) {
+		const section = sections[i];
+		const rel = tracker.getRelative(section.endTime);
 
 		if(rel == null) {
 			continue;

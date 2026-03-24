@@ -1,2 +1,2 @@
 // Assign default path for poller to inspect
-var defaultPath = "Lead";
+const defaultPath = "Lead";
