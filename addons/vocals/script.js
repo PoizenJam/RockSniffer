@@ -1,9 +1,11 @@
 ﻿let poller = new SnifferPoller({
-
+	
 	// Polling interval in ms
 	interval: 30,
-
+	
 	// Latency compensation in second
+	// If the lyrics are displayed with a delay, this value must be increased
+	// It depends on the power of your PC and the usage of your network
 	latencyCompensation: 0.250,
 
 	// Time in second for display vocal before lyric start
@@ -12,7 +14,7 @@
 	postVocalDisplayTime: 0.7,
 	// Number of line displayed, This value can be exceeded when it sings fast
 	numberOfLinesDisplayed: 2,
-
+	
 	// Max note keeping, Use for compatibility with bad length of vocal
 	maxNoteKepping: 2.5,
 
@@ -22,16 +24,16 @@
 	newLine: '<br>',
 
 	onData: function (data) {
-
+		
 		// Not in song
 		if (data.currentState != STATE_SONG_PLAYING) {
 			$(".vocal").html("");
 			return;
 		}
-
+		
 		let currentTime = data.memoryReadout.songTimer + this.latencyCompensation;
 		let vocals = data.songDetails.vocals;
-
+		
 		// Song not started or song without vocals
 		if (currentTime <= 0 || vocals == null) {
 			$(".vocal").html("");
@@ -44,7 +46,7 @@
 			$(".vocal").html("");
 			return;
 		}
-
+		
 		// Search pre index. Only for performance
 		let part = vocalsLength / 2;
 		let index = Math.floor(part);
@@ -52,7 +54,7 @@
 			part /= 2;
 			if (vocals[index].Time <= currentTime) {
 				index = Math.floor(index + part);
-
+				
 			} else if (vocals[index].Time > currentTime) {
 				index = Math.floor(index - part);
 			}
@@ -61,6 +63,7 @@
 			}
 		}
 		// Start 40 syllables before current vocal
+		// 30 is not enought for japanese language
 		index -= 40;
 		if (index <= 0) {
 			index = 0;
@@ -80,14 +83,13 @@
 		let currentLine = this.beginLyric;
 		let lineNumber = 1;
 
-		// const regExStartWithUpperCaseChar = /[A-Z]/;
-
+		
 		// NEW: helper to wrap each syllable with a class
 		function wrapSyllable(text, cssClass) {
 			if (!text) return "";
 			return '<span class="syllable ' + cssClass + '">' + text + '</span>';
 		}
-
+		
 		for (; index < vocalsLength; ++index) {
 
 			// Get state from vocal
@@ -97,7 +99,7 @@
 			if (noteKeeping > this.maxNoteKepping) {
 				noteKeeping = this.maxNoteKepping;
 			}
-
+			
 			isNextNewLine = false;
 			isNextWithoutSpace = false;
 			if (lyric.endsWith("-")) {
@@ -105,14 +107,14 @@
 			} else if (lyric.endsWith("+")) {
 				isNextNewLine = true;
 			}
-
+			
 			// Remove vocal state from lyric
 			if (isNextWithoutSpace || isNextNewLine) {
 				lyric = lyric.substr(0, lyric.length - 1);
 			}
-
+			
 			timeDifference = currentTime - vocal.Time;
-
+				
 			// NEW: decide if this syllable is past / current / future
 			let syllableClass;
 			if (timeDifference < 0) {
@@ -124,7 +126,7 @@
 			} else {
 				// BETWEEN start and end: currently sung syllable
 				syllableClass = "syllable-current";
-			}
+				}
 
 			if (timeDifference >= 0) {
 
