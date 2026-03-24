@@ -32,9 +32,9 @@ Every song playthrough is logged to a persistent database and/or CSV file with f
 ```json
 {
   "enableSqliteHistory": true,
-  "sqliteHistoryPath": "playthrough_history.db",
+  "sqliteHistoryPath": "output/playthrough_history.db",
   "enableCsvHistory": true,
-  "csvHistoryPath": "playthrough_history.csv"
+  "csvHistoryPath": "output/playthrough_history.csv"
 }
 ```
 
@@ -53,9 +53,9 @@ The three-timestamp design (metadata load, actual start, actual end) enables pre
 
 EVENT=START and EVENT=END log output is controlled by the `eventLogMode` setting in `config/output.json`:
 
-- **`"disabled"`** — No event output to console or sniffer.log (history logging still works independently)
-- **`"legacy"`** — Single-line format matching the original sniffer log style
-- **`"enabled"`** — Human-readable multi-line format with labeled fields
+- **`"Disabled"`** — No event output to console or sniffer.log (history logging still works independently)
+- **`"Legacy"`** — Single-line format matching the original sniffer log style
+- **`"Enabled"`** — Human-readable multi-line format with labeled fields
 
 ---
 
@@ -95,10 +95,11 @@ Vocal overlay has been improved, adding multiple themes (kick, twitch, rocksmith
 
 Base setup is the same as the original RockSniffer — see the [RockSniffer Wiki](https://github.com/kokolihapihvi/RockSniffer/wiki/Set-Up) for initial configuration.
 
-To enable PJ-specific features, edit `config/output.json` and set:
+To enable features, edit `config/output.json` and set:
 
 - `enableSqliteHistory` / `enableCsvHistory` to `true` for playthrough logging
-- `eventLogMode` to `"legacy"` or `"enabled"` for event console/log output
+- `eventLogMode` to `"Legacy"` or `"Enabled"` for event console/log output
+- `sniffSniff` to `false` to disable the random `*sniff sniff*` console messages
 - The default output dictionary already includes `game_state.txt` and `game_stage.txt`
 
 ---
