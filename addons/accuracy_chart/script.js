@@ -29,7 +29,7 @@ const poller = new SnifferPoller({
 		});
 	},
 	onSongEnded: function(song) {
-		const arr_id = poller.getCurrentArrangement().arrangementID;
+		arr_id = poller.getCurrentArrangement().arrangementID;
 
 		if(prevBest.length <= 1) {
 			storage.setValue(song.songID+"_"+arr_id, currentAttempt);
@@ -184,7 +184,7 @@ $(function() {
 		plugins: [
 			{
 				afterDatasetsDraw: function(chartInstance) {
-					const ctx = chartInstance.chart.ctx;
+					ctx = chartInstance.chart.ctx;
 					const chartArea = chartInstance.chartArea;
 
 					if(currentAttempt.length == 0) {

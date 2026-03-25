@@ -95,7 +95,7 @@ const app = new Vue({
 			return null;
 		},
 		sections: function() {
-			let arrangement = this.arrangement;
+			arrangement = this.arrangement;
 
 			if(arrangement == null) {return null;}
 
@@ -158,7 +158,7 @@ const app = new Vue({
 			if(this.prevSong.arrangements == null) {return null;}
 
 			for (let i = this.prevSong.arrangements.length - 1; i >= 0; i--) {
-				let arrangement = this.prevSong.arrangements[i];
+				arrangement = this.prevSong.arrangements[i];
 
 				if(arrangement.arrangementID == this.prevReadout.arrangementID) {
 					return arrangement;
@@ -168,16 +168,16 @@ const app = new Vue({
 			return null;
 		},
 		prevSections: function() {
-			let arrangement = this.prevArrangement;
+			arrangement = this.prevArrangement;
 
 			if(arrangement == null) {return null;}
 
-			let sections = arrangement.sections;
+			sections = arrangement.sections;
 
-			const songLength = this.prevSong.songLength;
+			songLength = this.prevSong.songLength;
 
 			for (let i = 0; i < sections.length; i++) {
-				let section = sections[i];
+				section = sections[i];
 
 				section.length = section.endTime - section.startTime;
 
@@ -222,14 +222,14 @@ let hideTimeout = null;
 function generateFeedback() {
 	app.feedback = [];
 
-	const arrangement = poller.getCurrentArrangement();
-	const sections = arrangement.sections;
+	arrangement = poller.getCurrentArrangement();
+	sections = arrangement.sections;
 	let feedback = []
 
 	let greens = 0;
 
 	for (let i = sections.length - 1; i >= 0; i--) {
-		const section = sections[i];
+		section = sections[i];
 		const rel = tracker.getRelative(section.endTime);
 
 		if(rel == null) {

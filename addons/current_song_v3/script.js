@@ -77,7 +77,7 @@ const app = new Vue({
 			if(this.song == null){
 				let width = 0;
 				} else {				
-				const width = (document.getElementsByClassName("songName")[0].offsetWidth + document.getElementsByClassName("songDash")[0].offsetWidth + document.getElementsByClassName("artistName")[0].offsetWidth);
+				width = (document.getElementsByClassName("songName")[0].offsetWidth + document.getElementsByClassName("songDash")[0].offsetWidth + document.getElementsByClassName("artistName")[0].offsetWidth);
 				}
             if(this.songInfoTransform == "translateX(0px)" && width > widthUI) {
                 this.songInfoTransform = "translateX(-"+(width-widthUI)+"px)";
@@ -187,7 +187,7 @@ const app = new Vue({
 			
 			//If no ID found, vall back on previous Path first then defaultPath
 			for (let i = this.song.arrangements.length - 1; i >= 0; i--) {
-				let arrangement = this.song.arrangements[i];
+				arrangement = this.song.arrangements[i];
 				if(this.prevPath == null && arrangement.name == defaultPath && arrangement.type == defaultPath && arrangement.isBonusArrangement == false && arrangement.isAlternateArrangement == false){
 					return arrangement;
 				} else if (arrangement.name == this.prevPath && arrangement.type == this.prevPath && arrangement.isBonusArrangement == false && arrangement.isAlternateArrangement == false){
@@ -206,7 +206,7 @@ const app = new Vue({
 		
 		//Create and draw sections
 		sections: function() {
-			let arrangement = this.arrangement;
+			arrangement = this.arrangement;
 
 			if(arrangement == null) {return null;}			
 			
@@ -259,19 +259,19 @@ const app = new Vue({
 		
 		//Create and draw phrase iterations
 		phraseIterations: function() {
-			let arrangement = this.arrangement;
+			arrangement = this.arrangement;
 
 			if(arrangement == null) {return null;}			
 			
 			let phraseIterations = arrangement.phraseIterations;
 
-			let songLength = this.song.songLength;
+			songLength = this.song.songLength;
 					
-			let maxDif = poller.getMaxDif();		
+			maxDif = poller.getMaxDif();		
 			
 			//Cycle through phrases and draw
 			for (let i = 0; i < phraseIterations.length; i++) {
-				let phrase = phraseIterations[i];
+				phrase = phraseIterations[i];
 
 				phrase.length = phrase.endTime - phrase.startTime;
 
@@ -287,7 +287,7 @@ const app = new Vue({
 
 				phrase.lengthPercent = (phrase.length / songLength) * 100;
 				
-				let phraseHeight = 1;
+				phraseHeight = 1;
 				
 				if(phrase.maxDifficulty > maxDif){maxDif = phrase.maxDifficulty}
 				
@@ -344,7 +344,7 @@ const app = new Vue({
 			if(this.prevSong.arrangements == null) {return null;}
 			
 			for (let i = this.prevSong.arrangements.length - 1; i >= 0; i--) {
-				let arrangement = this.prevSong.arrangements[i];
+				arrangement = this.prevSong.arrangements[i];
 
 				if(arrangement.arrangementID.length == 32 && arrangement.arrangementID == this.prevReadout.arrangementID) {
 					return arrangement;
@@ -361,16 +361,16 @@ const app = new Vue({
 		
 		//Get previous sections and draw results screen
 		prevSections: function() {
-			let arrangement = this.prevArrangement;
+			arrangement = this.prevArrangement;
 
 			if(arrangement == null) {return null;}
 
-			let sections = arrangement.sections;
+			sections = arrangement.sections;
 
-			let songLength = this.prevSong.songLength;
+			songLength = this.prevSong.songLength;
 
 			for (let i = 0; i < sections.length; i++) {
-				let section = sections[i];
+				section = sections[i];
 
 				section.length = section.endTime - section.startTime;
 
@@ -405,18 +405,18 @@ const app = new Vue({
 				
 		//Get previous phrases and draw results screen
 		prevPhrases: function() {
-			let arrangement = this.prevArrangement;
+			arrangement = this.prevArrangement;
 
 			if(arrangement == null) {return null;}
 
-			const phraseIterations = arrangement.phraseIterations;
+			phraseIterations = arrangement.phraseIterations;
 
-			const songLength = this.prevSong.songLength;
+			songLength = this.prevSong.songLength;
 			
-			let maxDif = poller.getMaxDif();		
+			maxDif = poller.getMaxDif();		
 			
 			for (let i = 0; i < phraseIterations.length; i++) {
-				const phrase = phraseIterations[i];
+				phrase = phraseIterations[i];
 
 				phrase.length = phrase.endTime - phrase.startTime;
 
@@ -432,7 +432,7 @@ const app = new Vue({
 
 				phrase.lengthPercent = (phrase.length / songLength) * 100;
 				
-				let phraseHeight = 1;
+				phraseHeight = 1;
 				
 				if(phrase.maxDifficulty > maxDif){maxDif = phrase.maxDifficulty}
 				
@@ -476,14 +476,14 @@ function formatTimer(time) {
 function generateFeedback() {
 	app.feedback = [];
 
-	const arrangement = poller.getCurrentArrangement();
-	const sections = arrangement.sections;
+	arrangement = poller.getCurrentArrangement();
+	sections = arrangement.sections;
 	let feedback = []
 
 	let greens = 0;
 
 	for (let i = sections.length - 1; i >= 0; i--) {
-		const section = sections[i];
+		section = sections[i];
 		const rel = tracker.getRelative(section.endTime);
 
 		if(rel == null) {

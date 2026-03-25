@@ -266,7 +266,7 @@ function evalSequencer() {
 	const ctime = timeline.getCustomTime();
 
 	for (let i = 0; i < sorted.length; i++) {
-		const event = sorted[i];
+		event = sorted[i];
 
 		let start = event.start;
 		let end = event.end;
@@ -301,7 +301,7 @@ function evalSequencer() {
 }
 
 function getSelectedRow() {
-    let row = undefined;
+    row = undefined;
     const sel = timeline.getSelection();
 
     if (sel.length) {
@@ -314,7 +314,7 @@ function getSelectedRow() {
 }
 
 function updateSelectedRow(newRow) {
-	const row = getSelectedRow();
+	row = getSelectedRow();
 
 	$.extend(timeline.getData()[row], newRow);
 
@@ -386,9 +386,9 @@ function dateToTime(date) {
 
 //Convert a number to a duration "hh:mm:ss"
 function durationString(tSeconds) {
-	let hh = Math.floor(tSeconds / 3600);
-	let mm = Math.floor((tSeconds - (hh * 3600)) / 60);
-	let ss = Math.floor(tSeconds % 60);
+	hh = Math.floor(tSeconds / 3600);
+	mm = Math.floor((tSeconds - (hh * 3600)) / 60);
+	ss = Math.floor(tSeconds % 60);
 
 	if(hh < 10) {hh = "0"+hh;}
 	if(mm < 10) {mm = "0"+mm;}
