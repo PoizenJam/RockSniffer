@@ -178,6 +178,29 @@ namespace RockSniffer.History
                 return;
             }
 
+            // NONSTOP-MODE GATE (v0.6.5 hotfix4):
+            //
+            // Skip ALL playthrough history writes (CSV and SQLite) for songs played in
+            // Nonstop Play. Reason: arrangement resolution is unreliable in Nonstop —
+            // the arrangement_hash memory pointer doesn't populate, AND bonus/alternate
+            // arrangements can be enabled by the user. Even our heuristic-based fallback
+            // chain (single-playable / prev-path / defaultArrangementType / etc.) can't
+            // distinguish between, say, a regular Bass arrangement and a bonus Bass
+            // arrangement, or between Lead and Combo. Writing potentially-wrong arrangement
+            // tags into the user's permanent history is worse than not writing — historic
+            // records should be trustworthy or absent.
+            //
+            // The early-return is intentional: we still log EVENT=END to sniffer.log
+            // (handled separately in Sniffer.cs), Discord RPC still fires, live overlays
+            // still render. Only the persistent history layer is skipped.
+            //
+            // Once Nonstop arrangement resolution is reliable (proper memory pointer for
+            // active path/arrangement found), this gate should be removed.
+            if (e.wasNonstopMode)
+            {
+                return;
+            }
+
             // Prefer the snapshot readout captured inside Sniffer.LogSongEnd (so we get
             // accurate end-of-song noteData / mode even if currentMemoryReadout has since
             // been updated). Fall back to a defensive empty readout if the snapshot is
