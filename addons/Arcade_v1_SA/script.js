@@ -1015,6 +1015,16 @@ function generateFeedback() {
 	app.feedback = [];
 
 	arrangement = poller.getCurrentArrangement();
+	//Defensive: getCurrentArrangement can return null when memoryReadout.arrangementID is junk
+	//(e.g. uninitialized or stale memory pointers in RSMemoryReader). Without this guard,
+	//`arrangement.sections` throws TypeError, propagating out of _doOnSongEnded -> gotData
+	//and aborting the poll BEFORE _doOnData runs — which freezes app.snifferData.
+	if(arrangement == null) {
+		app.feedback = ["YOU TRIED!"];
+		app.cycleFeedback();
+		hideTimeout = setTimeout(() => {if(app.mode == 1) {app.mode = 0; app.visible = false;}}, 60000);
+		return;
+	}
 	sections = arrangement.sections;
 	let feedback = []
 

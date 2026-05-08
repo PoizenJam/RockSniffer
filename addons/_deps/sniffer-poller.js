@@ -125,8 +125,16 @@ class SnifferPoller {
 		if(this._prevdata.currentState != data.currentState) {
 			this._doOnStateChanged(this._prevdata.currentState, data.currentState);
 
+			//Standard end-of-song path: state transitions SONG_ENDING -> IN_MENUS.
+			//Use this._prevdata.songDetails (not data.songDetails) so we fire with the song
+			//that just ended, in case songDetails have already advanced to the next song.
+			//Gated on songStarted so we don't double-fire when the songID-change branch below
+			//has already handled this transition (Nonstop Play case).
 			if(this._prevdata.currentState == STATE_SONG_ENDING && data.currentState == STATE_IN_MENUS) {
-				this._doOnSongEnded(data.songDetails);
+				if(this.songStarted) {
+					this._doOnSongEnded(this._prevdata.songDetails);
+					this.songStarted = false;
+				}
 			}
 
 			if(data.currentState == STATE_IN_MENUS) {
@@ -134,13 +142,35 @@ class SnifferPoller {
 			}
 		}
 
+		//Detect songID change.
+		//Nonstop Play: the C# state machine can stay parked in SONG_ENDING between songs (it only
+		//exits on songTimer == 0, which doesn't reliably happen between consecutive Nonstop songs),
+		//or it transitions through IN_MENUS so briefly the JS poll misses it. Either way, the
+		//reliable signal that one song has ended and another has started is the songID flipping
+		//while songStarted is true. Fire onSongEnded for the previous song before onSongChanged so
+		//listeners (e.g. PlaythroughTracker) finalize against the right arrangement, then reset
+		//songStarted so the onSongStarted gate below can re-fire for the new song.
 		if(this._prevdata.songDetails && data.songDetails && this._prevdata.songDetails.songID != data.songDetails.songID) {
+			if(this.songStarted) {
+				this._doOnSongEnded(this._prevdata.songDetails);
+				this.songStarted = false;
+			}
 			this._doOnSongChanged(data.songDetails);
 		}
 
-		//Don't fire song started before we have a valid arrangement
+		//IMPORTANT: update _prevdata BEFORE the songStarted check below.
+		//getCurrentArrangement() reads from this._prevdata, and tracker.onSongStarted (fired via
+		//_doOnSongStarted) calls poller.getCurrentArrangement() to size its currentAttempt arrays.
+		//If _prevdata is left stale here, the tracker initializes against the previous song's
+		//arrangement, recreating the original Nonstop bug from the wrong direction.
+		this._prevdata = data;
+
+		//Don't fire song started before we have a valid arrangement.
+		//SONG_ENDING is included as a valid trigger because in Nonstop Play the C# state machine
+		//can stay parked in SONG_ENDING throughout the entire next song. Without this the tracker
+		//would never reset for songs 2..N of a Nonstop run.
 		if(!this.songStarted) {
-			if(data.currentState == STATE_SONG_STARTING || data.currentState == STATE_SONG_PLAYING) {
+			if(data.currentState == STATE_SONG_STARTING || data.currentState == STATE_SONG_PLAYING || data.currentState == STATE_SONG_ENDING) {
 				if(this.getCurrentArrangement() != null) {
 					this.songStarted = true;
 					this._doOnSongStarted(data.songDetails);
@@ -148,8 +178,6 @@ class SnifferPoller {
 			}
 		}
 
-
-		this._prevdata = data;
 		this._doOnData(data);
 	}
 
@@ -219,6 +247,10 @@ class SnifferPoller {
 				return arrangement;
 			}
 		}
+
+		//Explicit null return so the contract is consistent (previously fell off the end and returned undefined,
+		//which was an additional source of TypeErrors in callers that did `arrangement.sections` without a null check).
+		return null;
 	}
 
 	//Get section at current time

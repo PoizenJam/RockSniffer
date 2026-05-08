@@ -42,11 +42,11 @@
 								</div>
 							</div>
 							<div v-if="mode == 1" :key="'mode1'">
-								<div class="songTitle">
+								<div class="songTitle" v-if="prevSong != null">
 									<a class="songName">{{prevSong.songName}}</a><br>
 									<a class="artistName">{{prevSong.artistName}}</a>
 								</div>
-								<a>{{prevNotes.Accuracy.toFixed(2)}}% ({{prevArrangement.type}})</a>
+								<a v-if="prevNotes != null && prevArrangement != null">{{prevNotes.Accuracy.toFixed(2)}}% ({{prevArrangement.type}})</a>
 								<div class="sectionContainer">
 									<div class="section" v-bind:style="section.style" v-bind:key="index" v-for="(section,index) in prevSections"></div>
 								</div>

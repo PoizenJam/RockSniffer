@@ -238,13 +238,15 @@ const app = new Vue({
 				}
 				
 				//If currently playing, color royal-blue as in game
-				if(this.readout.songTimer > section.startTime & this.readout.songTimer <= section.endTime){
+				if(this.readout.songTimer > section.startTime && this.readout.songTimer <= section.endTime){
 					section.style.backgroundColor = "royalblue";
 				}
 				
-				//If has previous best, color based on that. If not, then color using accuracy gradient
-				if (this.readout.songTimer > section.endTime | this.readout.gameStage == "panel_bib" | this.readout.gameStage == "sa_songreview" | this.readout.gameStage == "las_songreview"){
-					if(tracker.hasPreviousBest() & tracker.getSectionAccuracy((section.startTime + section.endTime)/2) != 'Rest') {
+				//If has previous best, color based on that. If not, then color using accuracy gradient.
+				//Note: && is required (not bitwise &) so hasPreviousBest() short-circuits and getSectionAccuracy()
+				//is not called when there is no previous best to compare against.
+				if (this.readout.songTimer > section.endTime || this.readout.gameStage == "panel_bib" || this.readout.gameStage == "sa_songreview" || this.readout.gameStage == "las_songreview"){
+					if(tracker.hasPreviousBest() && tracker.getSectionAccuracy((section.startTime + section.endTime)/2) != 'Rest') {
 						section.style.backgroundColor = (tracker.isBetterRelative((section.startTime + section.endTime)/2) ? "lime" : "red");
 					} else {						
 						section.style.backgroundColor = accuracyGradient(tracker.getSectionAccuracy((section.startTime + section.endTime)/2));
@@ -302,7 +304,7 @@ const app = new Vue({
 				}
 
 				//If phrase grade exists, color based on that; else, use accuracy gradient
-				if (this.readout.songTimer > phrase.endTime | this.readout.gameStage == "panel_bib" | this.readout.gameStage == "sa_songreview"  | this.readout.gameStage == "las_songreview"){
+				if (this.readout.songTimer > phrase.endTime || this.readout.gameStage == "panel_bib" || this.readout.gameStage == "sa_songreview"  || this.readout.gameStage == "las_songreview"){
 					if(tracker.getPhraseGrade((phrase.startTime + phrase.endTime)/2) != "No Data"){
 						phrase.style.backgroundColor = gradeCode[tracker.getPhraseGrade((phrase.startTime + phrase.endTime)/2)];
 					} else {
@@ -356,6 +358,11 @@ const app = new Vue({
 		//Get previous path info
 		prevPath: function() {
 			if(this.prevSong == null){return null;}
+			//Defensive: prevArrangement returns null when no entry in prevSong.arrangements matches
+			//prevReadout.arrangementID — which is the case in Nonstop transitions when memoryReadout.arrangementID
+			//becomes junk (e.g. "Fear Inoculum", "urn:image:dds:album_..."). Without this guard, .type
+			//throws TypeError, killing the Vue render.
+			if(this.prevArrangement == null){return null;}
 			return this.prevArrangement.type;
 		},
 		
@@ -477,6 +484,17 @@ function generateFeedback() {
 	app.feedback = [];
 
 	arrangement = poller.getCurrentArrangement();
+	//Defensive: getCurrentArrangement can return null in Nonstop Play transitions when memoryReadout.arrangementID
+	//is junk and none of the fallback paths match. Without this guard, `arrangement.sections` throws TypeError,
+	//propagating out of _doOnSongEnded -> gotData and aborting the poll BEFORE _doOnData runs — which means
+	//app.snifferData isn't updated and the entire UI freezes. Falling back to a generic feedback line keeps
+	//the data pipeline alive.
+	if(arrangement == null) {
+		app.feedback = ["YOU TRIED!"];
+		app.cycleFeedback();
+		hideTimeout = setTimeout(() => {if(app.mode == 1) {app.mode = 0; app.visible = false;}}, 60000);
+		return;
+	}
 	sections = arrangement.sections;
 	let feedback = []
 

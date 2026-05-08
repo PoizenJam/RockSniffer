@@ -28,7 +28,7 @@
 								</div>
 								<img class="albumArt" v-bind:src="'data:image/jpeg;base64,'+song.albumArt">
 								<div class="songTitle">
-									<table style="width: 100%;"><tr>
+									<table v-if="arrangement != null" style="width: 100%;"><tr>
 										<td>{{arrangement.type}}</td>
 										<td style="text-align: right;">{{arrangement.tuning.TuningName}}</td>
 									</tr></table>
@@ -47,10 +47,10 @@
 								</div>
 							</div>
 							<div v-if="mode == 1" :key="'mode1'">
-								<div class="songTitle">
+								<div class="songTitle" v-if="prevSong != null">
 									<a class="songName">{{prevSong.songName}}</a><br>
 									<a class="artistName">{{prevSong.artistName}}</a><br>
-									<table style="width: 100%;"><tr>
+									<table v-if="prevArrangement != null" style="width: 100%;"><tr>
 										<td>{{prevArrangement.type}}</td>
 										<td style="text-align: right;">{{prevArrangement.tuning.TuningName}}</td>
 									</tr></table>

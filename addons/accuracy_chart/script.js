@@ -18,7 +18,18 @@ const poller = new SnifferPoller({
 		betterTicks.length = 0;
 		worseTicks.length = 0;
 
-		let arr_id = poller.getCurrentArrangement().arrangementID;
+		//Defensive: getCurrentArrangement can return null when memoryReadout.arrangementID is junk
+		//(stale/uninitialized memory in RSMemoryReader). Without this guard, `.arrangementID` throws
+		//TypeError. B1's expanded onSongStarted firing means this path is hit more often in Nonstop Play
+		//where memory is more likely to be in a transient state. Skipping the previous-best lookup is
+		//safe — the chart will start fresh and the result will be saved correctly when onSongEnded fires
+		//later (assuming arrangementID has settled by then; if not, that storage write also self-skips).
+		const arrangement = poller.getCurrentArrangement();
+		if(arrangement == null) {
+			console.warn("accuracy_chart.onSongStarted: no resolvable arrangement, skipping previous-best lookup");
+			return;
+		}
+		let arr_id = arrangement.arrangementID;
 
 		storage.getValue(song.songID+"_"+arr_id).done(function(data) {
 			const parsed = JSON.parse(data);
@@ -29,7 +40,15 @@ const poller = new SnifferPoller({
 		});
 	},
 	onSongEnded: function(song) {
-		arr_id = poller.getCurrentArrangement().arrangementID;
+		//Same defensive null-check as onSongStarted above. If we can't resolve the arrangement at the
+		//moment of song end, we skip the storage write rather than throwing. The score stays in memory
+		//for the rest of the session even though it isn't persisted.
+		const arrangement = poller.getCurrentArrangement();
+		if(arrangement == null) {
+			console.warn("accuracy_chart.onSongEnded: no resolvable arrangement, skipping save");
+			return;
+		}
+		arr_id = arrangement.arrangementID;
 
 		if(prevBest.length <= 1) {
 			storage.setValue(song.songID+"_"+arr_id, currentAttempt);
