@@ -118,6 +118,9 @@ const app = new Vue({
 		phraseStartTime: function() {
 			if (this.readout.songTimer == 0){return 0;}
 			const currentPhrase = poller.getCurrentPhrase();
+			// Defensive null check (v0.6.5 hotfix): poller.getCurrentPhrase() can return null
+			// when noteData hasn't been populated yet, or during song transitions in Nonstop Play.
+			if(currentPhrase == null){return 0;}
 			if(currentPhrase.index == 0){return 0;}
 			return (currentPhrase.startTime / this.song.songLength) * 100;
 		},
@@ -399,6 +402,10 @@ const app = new Vue({
 		},
 		/* PREV */
 		prevSong: function() {
+			// Defensive null check (v0.6.5 hotfix)
+			if(!this.prevData) {
+				return null;
+			}
 			return this.prevData.songDetails;
 		},
 		prevReadout: function() {
@@ -409,17 +416,24 @@ const app = new Vue({
 			return this.prevData.memoryReadout;
 		},
 		prevNotes: function() {
-			if(!this.snifferData) {
+			// Defensive null check (v0.6.5 hotfix)
+			var pr = this.prevReadout;
+			if(!pr) {
 				return null;
 			}
 
-			return this.prevReadout.noteData;
+			return pr.noteData;
 		},	
 		hitDisplayF: function(){
 			$("div.hitDisplay").removeAttr('style');
 			if(this.prevSong == null) {
 				return '0100% 0000/0000';
 				}
+			// Defensive null check (v0.6.5 hotfix): this.prevNotes can be null when the
+			// previous poll's noteData was null — transient between songs in Nonstop Play.
+			if(this.prevNotes == null) {
+				return '0100% 0000/0000';
+			}
 			accHit = '0000';
 			notesHit = '0000';
 			totalNotes = '0000';
@@ -488,6 +502,10 @@ const app = new Vue({
 			if(this.prevSong == null) {
 				return '0000/0000';
 				}
+			// Defensive null check (v0.6.5 hotfix)
+			if(this.prevNotes == null) {
+				return '0000/0000';
+			}
 			curStr = '0000'
 			maxStr = '0000'
 			maxS = this.prevNotes.HighestHitStreak;

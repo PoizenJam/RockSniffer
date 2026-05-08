@@ -118,6 +118,9 @@ const app = new Vue({
 		phraseStartTime: function() {
 			if (this.readout.songTimer == 0){return 0;}
 			const currentPhrase = poller.getCurrentPhrase();
+			// Defensive null check (v0.6.5 hotfix): poller.getCurrentPhrase() can return null
+			// when noteData hasn't been populated yet, or during song transitions in Nonstop Play.
+			if(currentPhrase == null){return 0;}
 			if(currentPhrase.index == 0){return 0;}
 			return (currentPhrase.startTime / this.song.songLength) * 100;
 		},
@@ -551,6 +554,11 @@ const app = new Vue({
 		},
 		/* PREV */
 		prevSong: function() {
+			// Defensive null check (v0.6.5 hotfix): prevData can be null on the very first
+			// render before any poll has populated it.
+			if(!this.prevData) {
+				return null;
+			}
 			return this.prevData.songDetails;
 		},
 		prevReadout: function() {
@@ -561,11 +569,15 @@ const app = new Vue({
 			return this.prevData.memoryReadout;
 		},
 		prevNotes: function() {
-			if(!this.snifferData) {
+			// Defensive null check (v0.6.5 hotfix): prevReadout can be null (if prevData is
+			// null) and prevReadout.noteData can be null (if the C# server returned a
+			// readout with noteData=null, e.g. transient inter-song states in Nonstop Play).
+			var pr = this.prevReadout;
+			if(!pr) {
 				return null;
 			}
 
-			return this.prevReadout.noteData;
+			return pr.noteData;
 		},
 				
 		scrDisplayF: function(){
@@ -573,6 +585,12 @@ const app = new Vue({
 			if(this.prevSong == null) {
 				return '0000000';
 				}
+			// Defensive null check (v0.6.5 hotfix): this.prevNotes (computed from
+			// this.prevReadout.noteData) can be null when the previous poll's noteData
+			// was null — e.g., transient states between songs in Nonstop Play.
+			if(this.prevNotes == null) {
+				return '0000000';
+			}
 			score = '0000000';	
 			acc = this.prevNotes.Accuracy;
 			PerfP = this.prevNotes.PerfectPhrases;

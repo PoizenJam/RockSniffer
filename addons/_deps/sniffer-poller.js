@@ -203,8 +203,20 @@ class SnifferPoller {
 
 	//Get current accuract
 	getCurrentAccuracy(decimals = 2) {
-		//Get accuracy
+		// Defensive null checks (v0.6.5 hotfix): _prevdata.memoryReadout.noteData can be
+		// null in transient states — e.g., the C# RSMemoryReader's first DoReadout calls
+		// before any song-mode memory has been populated, or when the noteData magic-number
+		// validation fails on a poll between songs. Without these checks, addons that call
+		// getCurrentAccuracy from onSongEnded handlers (which now fires on songID change too,
+		// not just on state transitions) would throw "Cannot read properties of null" Vue
+		// errors and break the overlay.
+		if(!this._prevdata || !this._prevdata.memoryReadout || !this._prevdata.memoryReadout.noteData) {
+			return 0;
+		}
 		var accuracy = this._prevdata.memoryReadout.noteData.Accuracy;
+		if(accuracy == null) {
+			return 0;
+		}
 
 		//Round to decimals
 		return parseFloat(accuracy.toFixed(decimals));
