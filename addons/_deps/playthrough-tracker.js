@@ -149,14 +149,21 @@ class PlaythroughTracker {
 
 		var finalReadout = this.poller.getCurrentReadout();
 
-		this.currentAttempt.finalize(finalReadout);
-
-		// Empty-shell guard A (v0.6.5): skip if the readout has no notes.
+		// Empty-shell guard A (v0.6.5 hotfix3): skip if the readout has no notes.
+		// CRITICAL ORDER: this MUST run BEFORE currentAttempt.finalize() — finalize()
+		// unconditionally writes finalReadout.noteData into sections[currentSection],
+		// which can poison the section data with the PREVIOUS song's stats during
+		// Nonstop Play transitions (memoryReadout still holds previous song's noteData
+		// when next song's onSongStarted/onSongEnded racing logic fires). After
+		// finalize() runs, currentAttempt.sections looks "valid" even though the user
+		// never played — and the empty-shell guards we used to run AFTER finalize()
+		// were fooled into thinking it was a real attempt.
+		//
 		// In LaS song-select, the JS poller can fire _doOnSongStarted (creating a fresh
 		// currentAttempt) when the user just browses through a song — getCurrentArrangement
 		// falls through to prevPath/defaultPath and returns SOMETHING even though the user
 		// never actually played. The next songID flip then fires onSongEnded for that empty
-		// attempt, polluting SQLite addon storage with 88-byte / 182-byte shells.
+		// attempt. Without these guards, that pollutes SQLite addon storage with shells.
 		var totalNotes = (finalReadout && finalReadout.noteData)
 			? finalReadout.noteData.TotalNotes
 			: 0;
@@ -165,11 +172,10 @@ class PlaythroughTracker {
 			return;
 		}
 
-		// Empty-shell guard B (v0.6.5): skip if no section was ever finished.
-		// Even if finalReadout has notes, currentAttempt may have empty section placeholders
-		// (the constructor seeds this.sections with {}, and finalize() only fills the current
-		// section index — if the user didn't actually play through any sections, the attempt
-		// has no real per-section data and shouldn't be saved as a "best attempt".
+		// Empty-shell guard B (v0.6.5 hotfix3): skip if no section was ever finished.
+		// Same ORDER constraint — must run BEFORE finalize(). We check the section data
+		// BEFORE finalize() pollutes it. A section that hasn't had onSectionFinished()
+		// called on it during real play is still a `{}` placeholder from the constructor.
 		var finishedSections = 0;
 		if(this.currentAttempt && this.currentAttempt.sections) {
 			for(var i = 0; i < this.currentAttempt.sections.length; i++) {
@@ -183,6 +189,9 @@ class PlaythroughTracker {
 			console.warn("PlaythroughTracker.onSongEnded: no sections finished, skipping empty-shell save");
 			return;
 		}
+
+		// Both guards passed — this is a real attempt. Now safe to finalize and save.
+		this.currentAttempt.finalize(finalReadout);
 
 		if(this.previousBest == null) {
 			console.log("Storing first attempt");
