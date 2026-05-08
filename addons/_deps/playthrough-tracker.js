@@ -151,6 +151,39 @@ class PlaythroughTracker {
 
 		this.currentAttempt.finalize(finalReadout);
 
+		// Empty-shell guard A (v0.6.5): skip if the readout has no notes.
+		// In LaS song-select, the JS poller can fire _doOnSongStarted (creating a fresh
+		// currentAttempt) when the user just browses through a song — getCurrentArrangement
+		// falls through to prevPath/defaultPath and returns SOMETHING even though the user
+		// never actually played. The next songID flip then fires onSongEnded for that empty
+		// attempt, polluting SQLite addon storage with 88-byte / 182-byte shells.
+		var totalNotes = (finalReadout && finalReadout.noteData)
+			? finalReadout.noteData.TotalNotes
+			: 0;
+		if(!totalNotes || totalNotes <= 0) {
+			console.warn("PlaythroughTracker.onSongEnded: readout has no notes, skipping empty-shell save");
+			return;
+		}
+
+		// Empty-shell guard B (v0.6.5): skip if no section was ever finished.
+		// Even if finalReadout has notes, currentAttempt may have empty section placeholders
+		// (the constructor seeds this.sections with {}, and finalize() only fills the current
+		// section index — if the user didn't actually play through any sections, the attempt
+		// has no real per-section data and shouldn't be saved as a "best attempt".
+		var finishedSections = 0;
+		if(this.currentAttempt && this.currentAttempt.sections) {
+			for(var i = 0; i < this.currentAttempt.sections.length; i++) {
+				var sec = this.currentAttempt.sections[i];
+				if(sec != null && sec.TotalNotes != null && sec.TotalNotes > 0) {
+					finishedSections++;
+				}
+			}
+		}
+		if(finishedSections === 0) {
+			console.warn("PlaythroughTracker.onSongEnded: no sections finished, skipping empty-shell save");
+			return;
+		}
+
 		if(this.previousBest == null) {
 			console.log("Storing first attempt");
 			console.log(this.currentAttempt);

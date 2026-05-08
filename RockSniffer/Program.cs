@@ -48,11 +48,7 @@ namespace RockSniffer
         private PlaythroughHistory playthroughHistory;
         private SongDetails currentSong;
 
-        // Stored handler for static Logger event � must be unsubscribed between Run() calls
-        // to prevent duplicate subscriptions (static events accumulate across calls)
-        private EventHandler<RockSnifferLib.Logging.EventLoggedArgs> _eventEndHandler;
-
-        // Cache of last-written content per output file to avoid redundant disk writes
+                // Cache of last-written content per output file to avoid redundant disk writes
         private Dictionary<string, string> _outputCache = new Dictionary<string, string>();
 
         static void Main(string[] args)
@@ -313,16 +309,20 @@ namespace RockSniffer
                     playthroughHistory.OnActualSongStart(args);
                 };
 
-                // Actual gameplay end (when Sniffer.cs logs EVENT=END)
-                // Unsubscribe previous handler to prevent duplicate logging
-                // (Logger.OnEventEndLogged is STATIC and persists across Run() calls)
-                if (_eventEndHandler != null)
-                    RockSnifferLib.Logging.Logger.OnEventEndLogged -= _eventEndHandler;
-
-                _eventEndHandler = (sender, e) => {
-                    playthroughHistory.OnActualSongEnd(e, currentSong, memReadout, sniffer.Completed, sniffer.Paused);
+                // Actual gameplay end (when Sniffer.cs fires OnActualSongEnd).
+                //
+                // (v0.6.5) Switched from Logger.OnEventEndLogged to sniffer.OnActualSongEnd:
+                //   - sniffer is a fresh instance per Run() call, so no static-handler
+                //     accumulation issue (Logger is static — that's why _eventEndHandler
+                //     used to need explicit unsubscribe). No cleanup needed here.
+                //   - sniffer.OnActualSongEnd carries the full song-run arrangement context
+                //     (arrangementID / path / tuning preserved from song start, plus a
+                //     readout snapshot) — which is what produces the correct values in
+                //     playthrough_history during Nonstop Play, fixing the blank-arrangement
+                //     bug introduced when arrangementID validation was added.
+                sniffer.OnActualSongEnd += (sender, args) => {
+                    playthroughHistory.OnActualSongEnd(args);
                 };
-                RockSnifferLib.Logging.Logger.OnEventEndLogged += _eventEndHandler;
             }
 
             //Add RPC event listeners

@@ -155,32 +155,71 @@ namespace RockSniffer.History
             actualStartTimestamp = e.timestamp;
             arrangementPath = e.path ?? "";
             arrangementTuning = e.tuning ?? "";
+            // arrangementID is also available on e (e.arrangementID) but Program.cs
+            // doesn't propagate it as a field here; the end-of-song event carries the
+            // run-context arrangementID directly via e.arrangementID at OnActualSongEnd.
         }
 
         /// <summary>
-        /// Called when Sniffer.cs logs EVENT=END - this is the ACTUAL song end
+        /// Called when Sniffer.cs fires OnActualSongEnd. The args carry the arrangement
+        /// context captured AT SONG START (preserved through the end of the run even if
+        /// currentMemoryReadout has since been updated to a subsequent song's data).
+        ///
+        /// (v0.6.5) Signature changed to accept OnActualSongEndArgs directly. Previously
+        /// this method was wired through Logger.OnEventEndLogged in Program.cs and read
+        /// arrangementID from the live memory readout — which produced blank arrangement
+        /// columns in playthrough_history during Nonstop Play, where the cross-reference
+        /// logic would null the live arrangementID before this call ran.
         /// </summary>
-        public void OnActualSongEnd(RockSnifferLib.Logging.EventLoggedArgs e, SongDetails song, RSMemoryReadout readout, bool completed, bool paused)
+        public void OnActualSongEnd(RockSnifferLib.Events.OnActualSongEndArgs e)
         {
-            if (readout == null || song == null || !song.IsValid())
+            if (e == null || e.song == null || !e.song.IsValid())
             {
                 return;
             }
 
-            actualEndTimestamp = e.Timestamp;
+            // Prefer the snapshot readout captured inside Sniffer.LogSongEnd (so we get
+            // accurate end-of-song noteData / mode even if currentMemoryReadout has since
+            // been updated). Fall back to a defensive empty readout if the snapshot is
+            // somehow null.
+            var readout = e.readout ?? new RSMemoryReadout();
+            var song = e.song;
+            bool completed = e.completed;
+            bool paused = e.paused;
+
+            // Resolve arrangement metadata, preferring the run-context values from the
+            // event args (captured at song start in Sniffer.cs). Fall back to the
+            // OnActualSongStart-set fields if the args don't have them, and finally to the
+            // readout's arrangementID. This layered approach keeps the path/tuning correct
+            // for Nonstop and recovers gracefully for any edge case where the args are
+            // missing values.
+            string resolvedArrangementID = !string.IsNullOrEmpty(e.arrangementID)
+                ? e.arrangementID
+                : (readout.arrangementID ?? "");
+            string resolvedPath = !string.IsNullOrEmpty(e.path)
+                ? e.path
+                : (arrangementPath ?? "");
+            string resolvedTuning = !string.IsNullOrEmpty(e.tuning)
+                ? e.tuning
+                : (arrangementTuning ?? "");
+
+            actualEndTimestamp = e.timestamp;
 
             if (sqliteEnabled)
             {
-                LogToSqlite(song, readout, completed, paused);
+                LogToSqlite(song, readout, completed, paused,
+                            resolvedArrangementID, resolvedPath, resolvedTuning);
             }
 
             if (csvEnabled)
             {
-                LogToCsv(song, readout, completed, paused);
+                LogToCsv(song, readout, completed, paused,
+                         resolvedArrangementID, resolvedPath, resolvedTuning);
             }
         }
 
-        private void LogToSqlite(SongDetails song, RSMemoryReadout readout, bool completed, bool paused)
+        private void LogToSqlite(SongDetails song, RSMemoryReadout readout, bool completed, bool paused,
+                                  string resolvedArrangementID, string resolvedPath, string resolvedTuning)
         {
             try
             {
@@ -221,9 +260,9 @@ namespace RockSniffer.History
                     command.Parameters.AddWithValue("@album_name", song.albumName ?? "");
                     command.Parameters.AddWithValue("@album_year", song.albumYear);
                     command.Parameters.AddWithValue("@song_length", song.songLength);
-                    command.Parameters.AddWithValue("@arrangement_id", readout.arrangementID ?? "");
-                    command.Parameters.AddWithValue("@arrangement_path", arrangementPath ?? "");
-                    command.Parameters.AddWithValue("@arrangement_tuning", arrangementTuning ?? "");
+                    command.Parameters.AddWithValue("@arrangement_id", resolvedArrangementID ?? "");
+                    command.Parameters.AddWithValue("@arrangement_path", resolvedPath ?? "");
+                    command.Parameters.AddWithValue("@arrangement_tuning", resolvedTuning ?? "");
                     command.Parameters.AddWithValue("@game_mode", readout.mode.ToString());
                     command.Parameters.AddWithValue("@author", song.toolkit?.author ?? "");
                     command.Parameters.AddWithValue("@total_notes", readout.noteData?.TotalNotes ?? 0);
@@ -256,7 +295,8 @@ namespace RockSniffer.History
             }
         }
 
-        private void LogToCsv(SongDetails song, RSMemoryReadout readout, bool completed, bool paused)
+        private void LogToCsv(SongDetails song, RSMemoryReadout readout, bool completed, bool paused,
+                               string resolvedArrangementID, string resolvedPath, string resolvedTuning)
         {
             try
             {
@@ -281,9 +321,9 @@ namespace RockSniffer.History
                 line.Append($"\"{EscapeCsv(song.albumName)}\",");
                 line.Append($"{song.albumYear},");
                 line.Append($"{song.songLength.ToString(CultureInfo.InvariantCulture)},");
-                line.Append($"\"{EscapeCsv(readout.arrangementID)}\",");
-                line.Append($"\"{EscapeCsv(arrangementPath)}\",");
-                line.Append($"\"{EscapeCsv(arrangementTuning)}\",");
+                line.Append($"\"{EscapeCsv(resolvedArrangementID)}\",");
+                line.Append($"\"{EscapeCsv(resolvedPath)}\",");
+                line.Append($"\"{EscapeCsv(resolvedTuning)}\",");
                 line.Append($"\"{readout.mode}\",");
                 line.Append($"\"{EscapeCsv(song.toolkit?.author ?? "")}\",");
                 line.Append($"{readout.noteData?.TotalNotes ?? 0},");
