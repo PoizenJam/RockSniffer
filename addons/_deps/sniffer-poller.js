@@ -222,15 +222,16 @@ class SnifferPoller {
 		return parseFloat(accuracy.toFixed(decimals));
 	}
 
-	//Get current arrangement (v0.6.5 hotfix5)
+	//Get current arrangement (v0.6.5 hotfix5.1)
 	//
 	// Resolution order:
-	//   1) Direct arrangementID match (works in LaS/SA when memory has populated; fails in Nonstop)
+	//   1) Direct arrangementID match (exact — works in LaS/SA when memory has populated;
+	//      fails in Nonstop where the arrangement_hash pointer doesn't populate). Allows
+	//      bonus/alternate arrangements to match — the memory hash is exact, we trust it.
 	//   2) Path filter — match by currentPath (Bass/Lead/Rhythm) read from a stable byte
-	//      pointer in memory. Filters out bonus/alternate first; if exactly one regular
-	//      match, that's the answer. If no regular match, falls back to bonus/alt with the
-	//      same path type. Path is populated from Rocksmith launch onward and works in
-	//      Nonstop Play (where arrangement_hash fails).
+	//      pointer in memory. First non-bonus, non-alternate match wins. If no regular
+	//      match exists, falls through to first bonus/alt match. Path is populated from
+	//      Rocksmith launch onward and works in Nonstop Play.
 	//   3) Returns null if neither resolves — callers should null-check (the playthrough
 	//      tracker has defensive guards for this).
 	//
@@ -239,7 +240,13 @@ class SnifferPoller {
 	// (this.prevPath, set on every successful resolution) and a global `defaultPath` constant
 	// from config-ui.js (defaulting to "Lead"). With currentPath providing a reliable
 	// real-time signal, those guesses are no longer necessary; an unresolved arrangement
-	// returns null instead of silently picking a wrong path. Cleaner contract for callers.
+	// returns null instead of silently picking a wrong path.
+	//
+	// HOTFIX5.1: restored first-match-wins behavior in step 2. Initial hotfix5 used a
+	// count-and-only-pick-if-one approach that left sections/phrases unrendered during
+	// song-select when a song happened to have multiple arrangements with type matching
+	// currentPath. Legacy code (using prevPath/defaultPath) was always first-match-wins,
+	// which is what users expect.
 	getCurrentArrangement() {
 		if(!this._prevdata) {
 			return null;
@@ -255,56 +262,38 @@ class SnifferPoller {
 
 		var arrangements = this._prevdata.songDetails.arrangements;
 
-		// STEP 1: Direct arrangementID match
+		// STEP 1: Direct arrangementID match — exact, allow bonus/alt
 		for (var i = arrangements.length - 1; i >= 0; i--) {
 			var arrangement = arrangements[i];
 
-			//Check that ID is correctly formatted-32 characters long-to avoid errors
+			//Check that ID is correctly formatted (32 hex chars) to avoid bad matches
 			if(arrangement.arrangementID && arrangement.arrangementID.length == 32 &&
 			   arrangement.arrangementID == this._prevdata.memoryReadout.arrangementID) {
 				return arrangement;
 			}
 		}
 
-		// STEP 2: Path filter (currentPath from memory byte)
+		// STEP 2: Path filter — first match wins
 		var currentPath = this._prevdata.memoryReadout.currentPath;
 		if(currentPath) {
-			// 2a: Path-type + non-bonus + non-alternate
-			var regularMatch = null;
-			var regularCount = 0;
+			// 2a: Prefer non-bonus, non-alternate
 			for (var i = 0; i < arrangements.length; i++) {
 				var arr = arrangements[i];
 				if((arr.type == currentPath || arr.name == currentPath) &&
 				   arr.isBonusArrangement == false && arr.isAlternateArrangement == false) {
-					regularMatch = arr;
-					regularCount++;
-					if(regularCount > 1) break;
+					return arr;
 				}
 			}
-			if(regularCount == 1) {
-				return regularMatch;
-			}
-
-			// 2b: Path-type only (bonus/alt allowed) — last resort within Path resolution
-			if(regularCount == 0) {
-				var anyMatch = null;
-				var anyCount = 0;
-				for (var i = 0; i < arrangements.length; i++) {
-					var arr = arrangements[i];
-					if(arr.type == currentPath || arr.name == currentPath) {
-						anyMatch = arr;
-						anyCount++;
-						if(anyCount > 1) break;
-					}
-				}
-				if(anyCount == 1) {
-					return anyMatch;
+			// 2b: Bonus/alt allowed if no regular match exists
+			for (var i = 0; i < arrangements.length; i++) {
+				var arr = arrangements[i];
+				if(arr.type == currentPath || arr.name == currentPath) {
+					return arr;
 				}
 			}
 		}
 
-		// Unresolvable — return null. Callers (the playthrough tracker, the addons'
-		// computed properties) all have null guards for this.
+		// Unresolvable — return null. Callers all have null guards.
 		return null;
 	}
 

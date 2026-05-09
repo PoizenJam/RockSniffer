@@ -280,6 +280,8 @@ const app = new Vue({
 			var arrangements = this.song.arrangements;
 			
 			//STEP 1: arrangementID direct match (v0.6.5 hotfix5)
+			//Lets bonus/alternate arrangements be picked when they're the live one — the
+			//memory hash is exact so we trust it absolutely.
 			for (let i = arrangements.length - 1; i >= 0; i--) {
 				let arrangement = arrangements[i];
 				if(arrangement.arrangementID && arrangement.arrangementID.length == 32 &&
@@ -288,34 +290,25 @@ const app = new Vue({
 				}
 			}
 			
-			//STEP 2: currentPath filter (non-bonus, non-alternate first; bonus-allowed fallback)
+			//STEP 2: currentPath filter — first non-bonus, non-alternate match wins
+			//(v0.6.5 hotfix5.1 — restored legacy first-match behavior; the count-and-only-pick-if-one
+			//logic from initial hotfix5 was leaving sections unrendered during song-select when a
+			//song happened to have multiple arrangements with type matching currentPath.)
 			var currentPath = this.readout.currentPath;
 			if(currentPath) {
-				var regularMatch = null;
-				var regularCount = 0;
 				for (let i = 0; i < arrangements.length; i++) {
 					let arr = arrangements[i];
 					if((arr.type == currentPath || arr.name == currentPath) &&
 					   arr.isBonusArrangement == false && arr.isAlternateArrangement == false) {
-						regularMatch = arr;
-						regularCount++;
-						if(regularCount > 1) break;
+						return arr;
 					}
 				}
-				if(regularCount == 1) return regularMatch;
-				
-				if(regularCount == 0) {
-					var anyMatch = null;
-					var anyCount = 0;
-					for (let i = 0; i < arrangements.length; i++) {
-						let arr = arrangements[i];
-						if(arr.type == currentPath || arr.name == currentPath) {
-							anyMatch = arr;
-							anyCount++;
-							if(anyCount > 1) break;
-						}
+				//Fall-through: bonus/alt allowed if no regular match
+				for (let i = 0; i < arrangements.length; i++) {
+					let arr = arrangements[i];
+					if(arr.type == currentPath || arr.name == currentPath) {
+						return arr;
 					}
-					if(anyCount == 1) return anyMatch;
 				}
 			}
 			

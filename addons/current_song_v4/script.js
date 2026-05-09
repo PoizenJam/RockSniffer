@@ -93,34 +93,24 @@ const app = new Vue({
 				}
 			}
 
-			//STEP 2: currentPath filter (v0.6.5 hotfix5 — works in Nonstop where ID fails)
+			//STEP 2: currentPath filter — first match wins (v0.6.5 hotfix5.1)
+			//Lets sections/phrases render in song-select before the song actually starts,
+			//and gives Nonstop Play a working resolution path despite the broken
+			//arrangement_hash pointer there.
 			var currentPath = this.readout.currentPath;
 			if(currentPath) {
-				var regularMatch = null;
-				var regularCount = 0;
 				for (let i = 0; i < arrangements.length; i++) {
 					let arr = arrangements[i];
 					if((arr.type == currentPath || arr.name == currentPath) &&
 					   arr.isBonusArrangement == false && arr.isAlternateArrangement == false) {
-						regularMatch = arr;
-						regularCount++;
-						if(regularCount > 1) break;
+						return arr;
 					}
 				}
-				if(regularCount == 1) return regularMatch;
-
-				if(regularCount == 0) {
-					var anyMatch = null;
-					var anyCount = 0;
-					for (let i = 0; i < arrangements.length; i++) {
-						let arr = arrangements[i];
-						if(arr.type == currentPath || arr.name == currentPath) {
-							anyMatch = arr;
-							anyCount++;
-							if(anyCount > 1) break;
-						}
+				for (let i = 0; i < arrangements.length; i++) {
+					let arr = arrangements[i];
+					if(arr.type == currentPath || arr.name == currentPath) {
+						return arr;
 					}
-					if(anyCount == 1) return anyMatch;
 				}
 			}
 

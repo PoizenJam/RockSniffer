@@ -173,10 +173,11 @@ const app = new Vue({
 			return phraseHeight*100;
 		},		
 		
-		//Get current arrangement (v0.6.5 hotfix5)
-		// Resolution order: arrangementID direct match → currentPath filter (non-bonus
-		// then bonus-allowed) → null. Previously used prevPath / defaultPath fallbacks
-		// which have been removed in favor of the menu-level Path byte from memory.
+		//Get current arrangement (v0.6.5 hotfix5.1)
+		// Resolution order: arrangementID direct match → currentPath filter (first
+		// non-bonus/non-alternate match wins; falls through to bonus-allowed). Previously
+		// used prevPath / defaultPath fallbacks, removed in favor of the menu-level Path
+		// byte from memory.
 		arrangement: function() {
 			if(this.song == null) {return null;}
 			if(this.song.arrangements == null) {return null;}
@@ -191,35 +192,22 @@ const app = new Vue({
 				}
 			}
 			
-			//STEP 2: currentPath filter (non-bonus, non-alternate first)
+			//STEP 2: currentPath filter — first match wins (legacy behavior restored in 5.1)
 			var currentPath = this.readout.currentPath;
 			if(currentPath) {
-				var regularMatch = null;
-				var regularCount = 0;
 				for (let i = 0; i < arrangements.length; i++) {
 					let arr = arrangements[i];
 					if((arr.type == currentPath || arr.name == currentPath) &&
 					   arr.isBonusArrangement == false && arr.isAlternateArrangement == false) {
-						regularMatch = arr;
-						regularCount++;
-						if(regularCount > 1) break;
+						return arr;
 					}
 				}
-				if(regularCount == 1) return regularMatch;
-				
-				//Fall through: bonus/alt allowed
-				if(regularCount == 0) {
-					var anyMatch = null;
-					var anyCount = 0;
-					for (let i = 0; i < arrangements.length; i++) {
-						let arr = arrangements[i];
-						if(arr.type == currentPath || arr.name == currentPath) {
-							anyMatch = arr;
-							anyCount++;
-							if(anyCount > 1) break;
-						}
+				//Bonus/alt allowed if no regular match
+				for (let i = 0; i < arrangements.length; i++) {
+					let arr = arrangements[i];
+					if(arr.type == currentPath || arr.name == currentPath) {
+						return arr;
 					}
-					if(anyCount == 1) return anyMatch;
 				}
 			}
 			
