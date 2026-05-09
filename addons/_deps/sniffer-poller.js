@@ -238,9 +238,9 @@ class SnifferPoller {
 	// HOTFIX5 CLEAN CUT: removed the prevPath and defaultPath fallback branches that
 	// previous versions used as last-resort guesses. Those were a per-addon mutable variable
 	// (this.prevPath, set on every successful resolution) and a global `defaultPath` constant
-	// from config-ui.js (defaulting to "Lead"). With currentPath providing a reliable
-	// real-time signal, those guesses are no longer necessary; an unresolved arrangement
-	// returns null instead of silently picking a wrong path.
+	// from the now-removed config-ui.js (defaulting to "Lead"). With currentPath providing
+	// a reliable real-time signal, those guesses are no longer necessary; an unresolved
+	// arrangement returns null instead of silently picking a wrong path.
 	//
 	// HOTFIX5.1: restored first-match-wins behavior in step 2. Initial hotfix5 used a
 	// count-and-only-pick-if-one approach that left sections/phrases unrendered during
