@@ -222,7 +222,24 @@ class SnifferPoller {
 		return parseFloat(accuracy.toFixed(decimals));
 	}
 
-	//Get current arrangement
+	//Get current arrangement (v0.6.5 hotfix5)
+	//
+	// Resolution order:
+	//   1) Direct arrangementID match (works in LaS/SA when memory has populated; fails in Nonstop)
+	//   2) Path filter — match by currentPath (Bass/Lead/Rhythm) read from a stable byte
+	//      pointer in memory. Filters out bonus/alternate first; if exactly one regular
+	//      match, that's the answer. If no regular match, falls back to bonus/alt with the
+	//      same path type. Path is populated from Rocksmith launch onward and works in
+	//      Nonstop Play (where arrangement_hash fails).
+	//   3) Returns null if neither resolves — callers should null-check (the playthrough
+	//      tracker has defensive guards for this).
+	//
+	// HOTFIX5 CLEAN CUT: removed the prevPath and defaultPath fallback branches that
+	// previous versions used as last-resort guesses. Those were a per-addon mutable variable
+	// (this.prevPath, set on every successful resolution) and a global `defaultPath` constant
+	// from config-ui.js (defaulting to "Lead"). With currentPath providing a reliable
+	// real-time signal, those guesses are no longer necessary; an unresolved arrangement
+	// returns null instead of silently picking a wrong path. Cleaner contract for callers.
 	getCurrentArrangement() {
 		if(!this._prevdata) {
 			return null;
@@ -232,36 +249,62 @@ class SnifferPoller {
 			return null;
 		}
 
-		//Look through arrangements for matching ID
-		for (var i = this._prevdata.songDetails.arrangements.length - 1; i >= 0; i--) {
-			var arrangement = this._prevdata.songDetails.arrangements[i];
+		if(!this._prevdata.songDetails || !this._prevdata.songDetails.arrangements) {
+			return null;
+		}
+
+		var arrangements = this._prevdata.songDetails.arrangements;
+
+		// STEP 1: Direct arrangementID match
+		for (var i = arrangements.length - 1; i >= 0; i--) {
+			var arrangement = arrangements[i];
 
 			//Check that ID is correctly formatted-32 characters long-to avoid errors
-			if(arrangement.arrangementID.length == 32 && arrangement.arrangementID == this._prevdata.memoryReadout.arrangementID) {
-				return arrangement;
-			}
-		}
-		
-		//If no matching ID, look for arragnement that matches previous path
-		for (var i = this._prevdata.songDetails.arrangements.length - 1; i >= 0; i--) {
-			var arrangement = this._prevdata.songDetails.arrangements[i];	
-			
-			if(this.prevPath != null && arrangement.name == this.prevPath  && arrangement.type == this.prevPath  && arrangement.isBonusArrangement == false && arrangement.isAlternateArrangement == false) {
-				return arrangement;
-			}
-		}
-		
-		//If no previous path, resort to default path listed at top
-		for (var i = this._prevdata.songDetails.arrangements.length - 1; i >= 0; i--) {
-			var arrangement = this._prevdata.songDetails.arrangements[i];	
-			
-			if(arrangement.name == defaultPath && arrangement.type == defaultPath && arrangement.isBonusArrangement == false && arrangement.isAlternateArrangement == false) {
+			if(arrangement.arrangementID && arrangement.arrangementID.length == 32 &&
+			   arrangement.arrangementID == this._prevdata.memoryReadout.arrangementID) {
 				return arrangement;
 			}
 		}
 
-		//Explicit null return so the contract is consistent (previously fell off the end and returned undefined,
-		//which was an additional source of TypeErrors in callers that did `arrangement.sections` without a null check).
+		// STEP 2: Path filter (currentPath from memory byte)
+		var currentPath = this._prevdata.memoryReadout.currentPath;
+		if(currentPath) {
+			// 2a: Path-type + non-bonus + non-alternate
+			var regularMatch = null;
+			var regularCount = 0;
+			for (var i = 0; i < arrangements.length; i++) {
+				var arr = arrangements[i];
+				if((arr.type == currentPath || arr.name == currentPath) &&
+				   arr.isBonusArrangement == false && arr.isAlternateArrangement == false) {
+					regularMatch = arr;
+					regularCount++;
+					if(regularCount > 1) break;
+				}
+			}
+			if(regularCount == 1) {
+				return regularMatch;
+			}
+
+			// 2b: Path-type only (bonus/alt allowed) — last resort within Path resolution
+			if(regularCount == 0) {
+				var anyMatch = null;
+				var anyCount = 0;
+				for (var i = 0; i < arrangements.length; i++) {
+					var arr = arrangements[i];
+					if(arr.type == currentPath || arr.name == currentPath) {
+						anyMatch = arr;
+						anyCount++;
+						if(anyCount > 1) break;
+					}
+				}
+				if(anyCount == 1) {
+					return anyMatch;
+				}
+			}
+		}
+
+		// Unresolvable — return null. Callers (the playthrough tracker, the addons'
+		// computed properties) all have null guards for this.
 		return null;
 	}
 

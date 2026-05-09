@@ -173,30 +173,56 @@ const app = new Vue({
 			return phraseHeight*100;
 		},		
 		
-		//Get current arrangement
+		//Get current arrangement (v0.6.5 hotfix5)
+		// Resolution order: arrangementID direct match → currentPath filter (non-bonus
+		// then bonus-allowed) → null. Previously used prevPath / defaultPath fallbacks
+		// which have been removed in favor of the menu-level Path byte from memory.
 		arrangement: function() {
 			if(this.song == null) {return null;}
 			if(this.song.arrangements == null) {return null;}
+			var arrangements = this.song.arrangements;
 			
-			//Cycle through list of arrangemwnts for matching ID
-			for (let i = this.song.arrangements.length - 1; i >= 0; i--) {
-				let arrangement = this.song.arrangements[i];
-
-				if(arrangement.arrangementID.length == 32 && arrangement.arrangementID == this.readout.arrangementID) {
+			//STEP 1: arrangementID direct match
+			for (let i = arrangements.length - 1; i >= 0; i--) {
+				let arrangement = arrangements[i];
+				if(arrangement.arrangementID && arrangement.arrangementID.length == 32 &&
+				   arrangement.arrangementID == this.readout.arrangementID) {
 					return arrangement;
 				}
 			}
 			
-			//If no ID found, vall back on previous Path first then defaultPath
-			for (let i = this.song.arrangements.length - 1; i >= 0; i--) {
-				arrangement = this.song.arrangements[i];
-				if(this.prevPath == null && arrangement.name == defaultPath && arrangement.type == defaultPath && arrangement.isBonusArrangement == false && arrangement.isAlternateArrangement == false){
-					return arrangement;
-				} else if (arrangement.name == this.prevPath && arrangement.type == this.prevPath && arrangement.isBonusArrangement == false && arrangement.isAlternateArrangement == false){
-					return arrangement;
-					
-				}				
-			}	
+			//STEP 2: currentPath filter (non-bonus, non-alternate first)
+			var currentPath = this.readout.currentPath;
+			if(currentPath) {
+				var regularMatch = null;
+				var regularCount = 0;
+				for (let i = 0; i < arrangements.length; i++) {
+					let arr = arrangements[i];
+					if((arr.type == currentPath || arr.name == currentPath) &&
+					   arr.isBonusArrangement == false && arr.isAlternateArrangement == false) {
+						regularMatch = arr;
+						regularCount++;
+						if(regularCount > 1) break;
+					}
+				}
+				if(regularCount == 1) return regularMatch;
+				
+				//Fall through: bonus/alt allowed
+				if(regularCount == 0) {
+					var anyMatch = null;
+					var anyCount = 0;
+					for (let i = 0; i < arrangements.length; i++) {
+						let arr = arrangements[i];
+						if(arr.type == currentPath || arr.name == currentPath) {
+							anyMatch = arr;
+							anyCount++;
+							if(anyCount > 1) break;
+						}
+					}
+					if(anyCount == 1) return anyMatch;
+				}
+			}
+			
 			return null;
 		},
 		

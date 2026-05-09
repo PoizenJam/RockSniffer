@@ -83,12 +83,44 @@ const app = new Vue({
 		arrangement: function() {
 			if(this.song == null) {return null;}
 			if(this.song.arrangements == null) {return null;}
+			var arrangements = this.song.arrangements;
 
-			for (let i = this.song.arrangements.length - 1; i >= 0; i--) {
-				let arrangement = this.song.arrangements[i];
-
+			//STEP 1: arrangementID direct match
+			for (let i = arrangements.length - 1; i >= 0; i--) {
+				let arrangement = arrangements[i];
 				if(arrangement.arrangementID == this.readout.arrangementID) {
 					return arrangement;
+				}
+			}
+
+			//STEP 2: currentPath filter (v0.6.5 hotfix5 — works in Nonstop where ID fails)
+			var currentPath = this.readout.currentPath;
+			if(currentPath) {
+				var regularMatch = null;
+				var regularCount = 0;
+				for (let i = 0; i < arrangements.length; i++) {
+					let arr = arrangements[i];
+					if((arr.type == currentPath || arr.name == currentPath) &&
+					   arr.isBonusArrangement == false && arr.isAlternateArrangement == false) {
+						regularMatch = arr;
+						regularCount++;
+						if(regularCount > 1) break;
+					}
+				}
+				if(regularCount == 1) return regularMatch;
+
+				if(regularCount == 0) {
+					var anyMatch = null;
+					var anyCount = 0;
+					for (let i = 0; i < arrangements.length; i++) {
+						let arr = arrangements[i];
+						if(arr.type == currentPath || arr.name == currentPath) {
+							anyMatch = arr;
+							anyCount++;
+							if(anyCount > 1) break;
+						}
+					}
+					if(anyCount == 1) return anyMatch;
 				}
 			}
 

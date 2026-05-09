@@ -429,26 +429,48 @@ const app = new Vue({
 		arrangement: function() {
 			if(this.song == null) {return null;}
 			if(this.song.arrangements == null) {return null;}
+			var arrangements = this.song.arrangements;
 			
-			for (let i = this.song.arrangements.length - 1; i >= 0; i--) {
-				let arrangement = this.song.arrangements[i];
-
-				if(arrangement.arrangementID.length == 32 && arrangement.arrangementID == this.readout.arrangementID) {
+			//STEP 1: arrangementID direct match (v0.6.5 hotfix5)
+			for (let i = arrangements.length - 1; i >= 0; i--) {
+				let arrangement = arrangements[i];
+				if(arrangement.arrangementID && arrangement.arrangementID.length == 32 &&
+				   arrangement.arrangementID == this.readout.arrangementID) {
 					return arrangement;
 				}
 			}
 			
-			for (let i = this.song.arrangements.length - 1; i >= 0; i--) {
-				arrangement = this.song.arrangements[i];
+			//STEP 2: currentPath filter (non-bonus, non-alternate first; bonus-allowed fallback)
+			var currentPath = this.readout.currentPath;
+			if(currentPath) {
+				var regularMatch = null;
+				var regularCount = 0;
+				for (let i = 0; i < arrangements.length; i++) {
+					let arr = arrangements[i];
+					if((arr.type == currentPath || arr.name == currentPath) &&
+					   arr.isBonusArrangement == false && arr.isAlternateArrangement == false) {
+						regularMatch = arr;
+						regularCount++;
+						if(regularCount > 1) break;
+					}
+				}
+				if(regularCount == 1) return regularMatch;
 				
-				//rearrange for readability- default should be the else statement
-				if(this.prevPath == null && arrangement.name == defaultPath && arrangement.type == defaultPath && arrangement.isBonusArrangement == false && arrangement.isAlternateArrangement == false){
-					return arrangement;
-				} else if (arrangement.name == this.prevPath && arrangement.type == this.prevPath && arrangement.isBonusArrangement == false && arrangement.isAlternateArrangement == false){
-					return arrangement;
-					
-				}				
-			}	
+				if(regularCount == 0) {
+					var anyMatch = null;
+					var anyCount = 0;
+					for (let i = 0; i < arrangements.length; i++) {
+						let arr = arrangements[i];
+						if(arr.type == currentPath || arr.name == currentPath) {
+							anyMatch = arr;
+							anyCount++;
+							if(anyCount > 1) break;
+						}
+					}
+					if(anyCount == 1) return anyMatch;
+				}
+			}
+			
 			return null;
 		},
         tuningName: function() {
