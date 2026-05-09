@@ -183,12 +183,12 @@ namespace RockSniffer.History
             // Skip ALL playthrough history writes (CSV and SQLite) for songs played in
             // Nonstop Play. Reason: arrangement resolution is unreliable in Nonstop —
             // the arrangement_hash memory pointer doesn't populate, AND bonus/alternate
-            // arrangements can be enabled by the user. Even our heuristic-based fallback
-            // chain (single-playable / prev-path / defaultArrangementType / etc.) can't
-            // distinguish between, say, a regular Bass arrangement and a bonus Bass
-            // arrangement, or between Lead and Combo. Writing potentially-wrong arrangement
-            // tags into the user's permanent history is worse than not writing — historic
-            // records should be trustworthy or absent.
+            // arrangements can be enabled by the user. Even with Path-based fallback,
+            // we can't distinguish between, say, a regular Bass arrangement and a bonus
+            // Bass arrangement, or between Lead and an alternately-named Lead chart.
+            // Writing potentially-wrong arrangement tags into the user's permanent
+            // history is worse than not writing — historic records should be
+            // trustworthy or absent.
             //
             // The early-return is intentional: we still log EVENT=END to sniffer.log
             // (handled separately in Sniffer.cs), Discord RPC still fires, live overlays
