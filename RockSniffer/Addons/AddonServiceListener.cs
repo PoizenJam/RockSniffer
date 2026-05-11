@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 using RockSniffer.Addons.Storage;
 using RockSniffer.Configuration;
 using RockSnifferLib.Events;
@@ -22,6 +23,22 @@ namespace RockSniffer.Addons
         private class JsonResponse
         {
             public bool success = false;
+
+            /// <summary>
+            /// SnifferState as a readable string in the JSON output (v0.6.7).
+            /// Without StringEnumConverter, Newtonsoft serializes enum fields as
+            /// their underlying integer value (e.g. 6 for SONG_PAUSED), which is
+            /// difficult to interpret in the debug overlay and forces addons to
+            /// hardcode integer mappings. With the converter, the JSON shows
+            /// `"currentState": "SONG_PAUSED"` directly.
+            ///
+            /// API note: any addon that previously compared currentState to an
+            /// integer literal (e.g. `if (data.currentState == 6)`) will break.
+            /// None of the bundled addons in this repository do that; third-party
+            /// addons that do should switch to string comparison
+            /// (e.g. `if (data.currentState == "SONG_PAUSED")`).
+            /// </summary>
+            [JsonConverter(typeof(StringEnumConverter))]
             public SnifferState currentState = SnifferState.NONE;
             public RSMemoryReadout memoryReadout;
             public SongDetails songDetails;
