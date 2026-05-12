@@ -7,11 +7,12 @@ class PlaythroughTracker {
 		this.previousBest = null;
 		this.currentAttempt = null;
 		this.currentAttemptPhrase = null;
-		// True if the current song run was started in a Nonstop Play gameStage. Set by
-		// onSongStarted; checked by onSongEnded to gate playthrough_tracker writes.
-		// Default false so any unexpected pre-onSongStarted onSongEnded call doesn't
-		// accidentally skip a legitimate save.
-		this.wasNonstopMode = false;
+		// (v0.6.8) Removed `this.wasNonstopMode` field. Pre-v0.6.8 this gated
+		// playthrough_tracker writes for Nonstop Play because arrangement
+		// resolution was unreliable there; v0.6.8's PLAY_arrID chain solved
+		// that, so the gate (and the field that supported it) are gone.
+		// Nonstop plays now save to playthrough_tracker on equal footing
+		// with LaS and SA plays.
 
 		poller.onData((data) => this.onData(data));
 		poller.onSongStarted((song) => this.onSongStarted(song));
@@ -116,18 +117,12 @@ class PlaythroughTracker {
 	onSongStarted(song) {
 		this.previousBest = null;
 
-		// NONSTOP-MODE GATE (v0.6.5 hotfix4):
-		// Capture whether this song was started in a Nonstop Play gameStage. We check
-		// at start time (rather than at end) because Nonstop transitions can change
-		// gameStage between start and end. If true, onSongEnded will skip the
-		// setValue calls to playthrough_tracker — arrangement resolution is unreliable
-		// in Nonstop (memory pointer doesn't populate, AND bonus/alternate arrangements
-		// can be enabled), so writing potentially-wrong arrangement keys to per-attempt
-		// storage would pollute the user's tracking. See PlaythroughHistory.cs for the
-		// matching gate on the C# history side.
-		var readout = this.poller.getCurrentReadout();
-		var gs = (readout && readout.gameStage) ? readout.gameStage : "";
-		this.wasNonstopMode = (gs === "nsp_main" || gs === "nonstopplayhub" || gs === "nonstopplaygame");
+		// (v0.6.8) Removed Nonstop-mode gameStage capture. Pre-v0.6.8 captured
+		// gameStage here at song-start to set this.wasNonstopMode, which was
+		// then checked at song-end to skip writes. v0.6.8's PLAY_arrID chain
+		// made arrangement resolution reliable in Nonstop Play, so the gate
+		// (and the capture) are no longer needed. See onSongEnded for the
+		// matching removal.
 
 		var arrangement = this.poller.getCurrentArrangement();
 		this.currentAttempt = new PlaythroughBySection(arrangement.sections);
@@ -148,16 +143,12 @@ class PlaythroughTracker {
 	
 	//Do on song ended
 	onSongEnded(song) {
-		// NONSTOP-MODE GATE (v0.6.5 hotfix4):
-		// Skip ALL playthrough_tracker writes for songs played in Nonstop Play.
-		// See onSongStarted comment above for rationale. Note we still do all the
-		// other onSongEnded work — finalize, defensive null checks — and console-log
-		// a clear message so users have visibility into why their Nonstop attempts
-		// aren't being saved.
-		if (this.wasNonstopMode) {
-			console.log("PlaythroughTracker.onSongEnded: skipping save (Nonstop Play mode — arrangement resolution unreliable)");
-			return;
-		}
+		// (v0.6.8) Removed Nonstop-mode early-return gate. Pre-v0.6.8 this
+		// gate skipped all playthrough_tracker setValue calls for songs
+		// played in Nonstop because arrangement resolution was unreliable
+		// there. v0.6.8's PLAY_arrID chain solved Nonstop arrangement
+		// resolution, so Nonstop plays now save on equal footing with LaS
+		// and SA plays. See PlaythroughHistory.cs for the matching removal.
 
 		//Defensive: if there's no current attempt or no resolvable arrangement, skip storage rather than
 		//throwing on `arrangement.arrangementID`. This can happen in Nonstop Play when memory is in transition
@@ -244,9 +235,9 @@ class PlaythroughTracker {
 		this.currentAttempt = null;
 		this.currentAttemptPhrase = null;
 		this.previousBest = null;
-		// Don't reset wasNonstopMode here — onSongStarted will set it for the new song.
-		// Resetting here would create a window where a leftover pre-songID-change
-		// onSongEnded could see false and incorrectly attempt to save.
+		// (v0.6.8) The pre-v0.6.8 comment about not resetting wasNonstopMode
+		// here is removed alongside the field itself — see onSongStarted /
+		// onSongEnded for the gate removal context.
 	}
 }
 

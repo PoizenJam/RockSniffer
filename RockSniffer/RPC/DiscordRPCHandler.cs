@@ -124,10 +124,17 @@ namespace RockSniffer.RPC
                 //Set accuracy as text for arrangement icon
                 rp.Assets.SmallImageText = accuracyText;
 
-                if (readout.mode == RSMode.SCOREATTACK)
+                // (v0.6.8) Pattern-match guard added. Pre-v0.6.8 `readout.mode` was
+                // set inside ReadNoteData / ReadScoreAttackNoteData, so mode ==
+                // SCOREATTACK strictly implied noteData was ScoreAttackNoteData,
+                // and the cast on the next line was safe. v0.6.8 derives mode
+                // from gameStage instead, so mode and noteData are no longer
+                // structurally coupled: e.g. in panel_bib (SA options menu) mode
+                // is SCOREATTACK but noteData may be stale LearnASongNoteData
+                // from a prior session. The pattern-match guard makes the cast
+                // safe under the new contract.
+                if (readout.mode == RSMode.SCOREATTACK && readout.noteData is ScoreAttackNoteData sand)
                 {
-                    var sand = (ScoreAttackNoteData)readout.noteData;
-
                     rp.Assets.SmallImageText = $"{FormattableString.Invariant($"{sand.CurrentScore:n0}")} x{sand.CurrentMultiplier} | {rp.Assets.SmallImageText}";
 
                     if (sand.FailedPhrases > 0)

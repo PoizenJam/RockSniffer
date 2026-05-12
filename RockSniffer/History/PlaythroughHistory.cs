@@ -178,28 +178,31 @@ namespace RockSniffer.History
                 return;
             }
 
-            // NONSTOP-MODE GATE (v0.6.5 hotfix4):
+            // NONSTOP-MODE GATE REMOVED (v0.6.8):
             //
-            // Skip ALL playthrough history writes (CSV and SQLite) for songs played in
-            // Nonstop Play. Reason: arrangement resolution is unreliable in Nonstop —
-            // the arrangement_hash memory pointer doesn't populate, AND bonus/alternate
-            // arrangements can be enabled by the user. Even with Path-based fallback,
-            // we can't distinguish between, say, a regular Bass arrangement and a bonus
-            // Bass arrangement, or between Lead and an alternately-named Lead chart.
-            // Writing potentially-wrong arrangement tags into the user's permanent
-            // history is worse than not writing — historic records should be
-            // trustworthy or absent.
+            // The pre-v0.6.8 early-return on `e.wasNonstopMode` was put in place
+            // (v0.6.5 hotfix4) because arrangement resolution was unreliable in
+            // Nonstop Play — the arrangement_hash memory pointer did not populate,
+            // and bonus/alternate arrangements could be enabled by the user,
+            // making Path-byte fallback insufficient to distinguish (e.g.) a
+            // regular Bass arrangement from a bonus Bass arrangement.
             //
-            // The early-return is intentional: we still log EVENT=END to sniffer.log
-            // (handled separately in Sniffer.cs), Discord RPC still fires, live overlays
-            // still render. Only the persistent history layer is skipped.
+            // v0.6.8 (PLAY_arrID chain) solved both: the new chain reads the
+            // currently-loaded arrangement GUID directly, distinguishing every
+            // arrangement uniquely including bonus/alternate. v0.6.8 lifts the
+            // gate accordingly — Nonstop plays now write to playthrough_history
+            // and playthrough_tracker on equal footing with LaS and SA plays.
             //
-            // Once Nonstop arrangement resolution is reliable (proper memory pointer for
-            // active path/arrangement found), this gate should be removed.
-            if (e.wasNonstopMode)
-            {
-                return;
-            }
+            // `e.wasNonstopMode` is still populated on the event args (Sniffer.cs
+            // continues to set it at song start) and remains available to any
+            // downstream consumer that wants the contextual flag — it just no
+            // longer gates writes here.
+            //
+            // game_mode column behavior change: Nonstop rows now correctly write
+            // "NONSTOPPLAY" via readout.mode.ToString() (line below), rather than
+            // the pre-v0.6.8 incidental "LEARNASONG" that resulted from Nonstop
+            // reusing the LaS note-data subsystem. Existing rows in the database
+            // are unchanged; only new rows reflect the corrected classification.
 
             // Prefer the snapshot readout captured inside Sniffer.LogSongEnd (so we get
             // accurate end-of-song noteData / mode even if currentMemoryReadout has since
