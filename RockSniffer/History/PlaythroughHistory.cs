@@ -178,6 +178,28 @@ namespace RockSniffer.History
                 return;
             }
 
+            // MULTIPLAYER GATE (v0.6.8):
+            //
+            // Skip all playthrough history writes (CSV and SQLite) for songs played
+            // in any Multiplayer mode (split_game, mp_*, duet_*, h2h_*). Full
+            // multiplayer support requires a separate larger effort — multiple user
+            // note data streams and per-user arrangements need first-class tracking
+            // before MP rows can be written with the same data quality as LaS / SA /
+            // NSP rows. Until that lands, MP plays are excluded from history rather
+            // than written with potentially-wrong single-user values.
+            //
+            // wasMultiplayerMode is captured at song START in Sniffer.cs using the
+            // v0.6.8 gameStage-derived mode field, same pattern as wasNonstopMode
+            // (which previously gated Nonstop until PLAY_arrID unblocked it).
+            //
+            // EVENT=END is still logged to sniffer.log (handled separately in
+            // Sniffer.cs), Discord RPC still fires, live overlays still render —
+            // only the persistent history layer is skipped.
+            if (e.wasMultiplayerMode)
+            {
+                return;
+            }
+
             // NONSTOP-MODE GATE REMOVED (v0.6.8):
             //
             // The pre-v0.6.8 early-return on `e.wasNonstopMode` was put in place

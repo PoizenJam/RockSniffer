@@ -185,8 +185,13 @@ namespace RockSniffer.RPC
                     {
                         state = "Session Mode";
                     }
-                    else if (gameStage.StartsWith("nsp"))
+                    else if (gameStage.StartsWith("nsp") || gameStage.StartsWith("nonstopplay"))
                     {
+                        // (v0.6.8) Added "nonstopplay" prefix to also catch the full-word
+                        // Nonstop gameStages: nonstopplay (top-level entry), nonstopplaygame
+                        // (active gameplay), nonstopplayhub (between-songs lobby). Pre-v0.6.8
+                        // only the abbreviated nsp_* family was caught, so the full-word
+                        // stages fell through to no state at all on the Discord RPC label.
                         state = "Nonstop Play";
                     }
                     else if (gameStage.StartsWith("sa"))

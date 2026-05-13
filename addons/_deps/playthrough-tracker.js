@@ -14,6 +14,16 @@ class PlaythroughTracker {
 		// Nonstop plays now save to playthrough_tracker on equal footing
 		// with LaS and SA plays.
 
+		// (v0.6.8) True if the current song run was started while in a
+		// Multiplayer mode (RSMode.MULTIPLAYER — split_game, mp_*, duet_*,
+		// h2h_*). Used to gate playthrough_tracker writes — multi-user note
+		// data isn't supported yet, so MP attempts shouldn't be saved to
+		// per-section / per-phrase storage. Captured in onSongStarted from
+		// the v0.6.8 gameStage-derived mode field on the memory readout.
+		// Default false so any unexpected pre-onSongStarted onSongEnded call
+		// doesn't accidentally skip a legitimate save.
+		this.wasMultiplayerMode = false;
+
 		poller.onData((data) => this.onData(data));
 		poller.onSongStarted((song) => this.onSongStarted(song));
 		poller.onSongEnded((song) => this.onSongEnded(song));
@@ -124,6 +134,12 @@ class PlaythroughTracker {
 		// (and the capture) are no longer needed. See onSongEnded for the
 		// matching removal.
 
+		// (v0.6.8) Capture MULTIPLAYER mode at song start via the v0.6.8
+		// gameStage-derived mode field. Checked at song-end to skip writes
+		// for MP attempts — see onSongEnded.
+		var readout = this.poller.getCurrentReadout();
+		this.wasMultiplayerMode = (readout && readout.mode === "MULTIPLAYER");
+
 		var arrangement = this.poller.getCurrentArrangement();
 		this.currentAttempt = new PlaythroughBySection(arrangement.sections);
 		this.currentAttemptPhrase = new PlaythroughByPhrase(arrangement.phraseIterations);
@@ -149,6 +165,18 @@ class PlaythroughTracker {
 		// there. v0.6.8's PLAY_arrID chain solved Nonstop arrangement
 		// resolution, so Nonstop plays now save on equal footing with LaS
 		// and SA plays. See PlaythroughHistory.cs for the matching removal.
+
+		// (v0.6.8) MULTIPLAYER GATE:
+		// Skip all playthrough_tracker writes for MP attempts. Multi-user
+		// note data and per-user arrangements aren't tracked yet, so
+		// per-section / per-phrase storage would receive single-user data
+		// tagged under a shared songID + arrangementID key, polluting the
+		// user's tracking. See PlaythroughHistory.cs for the matching
+		// gate on the C# history side.
+		if (this.wasMultiplayerMode) {
+			console.log("PlaythroughTracker.onSongEnded: skipping save (MULTIPLAYER mode — multi-user note data not yet supported)");
+			return;
+		}
 
 		//Defensive: if there's no current attempt or no resolvable arrangement, skip storage rather than
 		//throwing on `arrangement.arrangementID`. This can happen in Nonstop Play when memory is in transition
