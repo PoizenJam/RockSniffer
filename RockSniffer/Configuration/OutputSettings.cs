@@ -26,7 +26,11 @@ namespace RockSniffer.Configuration
             { "accuracy.txt", "%CURRENT_ACCURACY%" },
             { "streaks.txt", "%CURRENT_STREAK%/%HIGHEST_STREAK%" },
             { "game_stage.txt", "%GAME_STAGE%" },
-            { "game_state.txt", "%GAME_STATE%" }
+            { "game_state.txt", "%GAME_STATE%" },
+            // (v0.6.9) Current Path (arrangement type, "Lead"/"Rhythm"/"Bass"),
+            // populated from launch and updated whenever the user changes Path
+            // at the menu level. Useful for path-specific OBS scene switching.
+            { "path.txt", "%CURRENT_PATH%" }
         };
 
         // Playthrough history settings

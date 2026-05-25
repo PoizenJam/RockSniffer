@@ -1,9 +1,35 @@
-const STATE_NONE = 0;
-const STATE_IN_MENUS = 1;
-const STATE_SONG_SELECTED = 2;
-const STATE_SONG_STARTING = 3;
-const STATE_SONG_PLAYING = 4;
-const STATE_SONG_ENDING = 5;
+// SnifferState string constants (v0.6.9).
+//
+// Pre-v0.6.7 these were integers matching the C# enum underlying values
+// (NONE=0..SONG_PAUSED=6). v0.6.7 added [JsonConverter(typeof(StringEnumConverter))]
+// to the currentState field in AddonServiceListener.JsonResponse, which made the
+// JSON emit "currentState": "SONG_PLAYING" instead of 4. The integer constants
+// became silently broken — every `state == STATE_*` comparison was string==int
+// which always evaluates false.
+//
+// Symptoms before v0.6.9:
+//   - vocals addon never displayed lyrics (gate at vocals/script.js:27 always
+//     failed, so display was always blanked).
+//   - playthrough-tracker.js never called update() / update_phrase() during
+//     gameplay (gate at line 115 always failed), so per-phrase / per-section
+//     accuracy never accumulated. Phrases displayed grey in current_song_* and
+//     Arcade_* addons because getPhraseAccuracy returned 'Rest' on the empty
+//     constructor-placeholder data.
+//   - accuracy_chart never collected data points (similar gate broke).
+//   - sniffer-poller.js internal lifecycle gates (lines 133, 140, 173) failed
+//     too; songID-change tracking kept most things working but state-driven
+//     transitions were silently no-ops.
+//
+// Fix: change the constants to the enum member NAMES, which is what the JSON
+// now carries. All consumer comparisons (`state == STATE_SONG_PLAYING`,
+// `data.currentState != STATE_IN_MENUS`, etc.) start working immediately
+// without per-addon edits.
+const STATE_NONE = "NONE";
+const STATE_IN_MENUS = "IN_MENUS";
+const STATE_SONG_SELECTED = "SONG_SELECTED";
+const STATE_SONG_STARTING = "SONG_STARTING";
+const STATE_SONG_PLAYING = "SONG_PLAYING";
+const STATE_SONG_ENDING = "SONG_ENDING";
 
 class SnifferPoller {
 	//Create variables and containers for poller data.
