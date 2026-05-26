@@ -65,6 +65,9 @@ const poller = new SnifferPoller({
 
 	onSongEnded: function(data) {
 		app.prevData = app.snifferData;
+		// Snapshot tracker outputs before reset on next songID flip.
+		app.snapshotHasPreviousBest = tracker.hasPreviousBest();
+		app.snapshotFinal = tracker.getFinal();
 		app.mode = 1;
 		modeOneSetAt = Date.now();
 		generateFeedback();
@@ -92,6 +95,9 @@ const app = new Vue({
 		snifferData: {},
 		feedback: [],
 		feedbackIdx: 0,
+		// (v0.6.10 amendment) See current_song_v3/script.js for rationale.
+		snapshotHasPreviousBest: null,
+		snapshotFinal: null,
         songInfoTransform: "translateX(0px)"
 	},
     mounted: function() {
@@ -117,9 +123,15 @@ const app = new Vue({
 			}
 		},
 		hasPreviousBest: function() {
+			if (this.mode === 1 && this.snapshotHasPreviousBest !== null) {
+				return this.snapshotHasPreviousBest;
+			}
 			return tracker.hasPreviousBest();
 		},
 		trackerScore: function() {
+			if (this.mode === 1 && this.snapshotFinal !== null) {
+				return this.snapshotFinal;
+			}
 			return tracker.getFinal();
 		}
 	},

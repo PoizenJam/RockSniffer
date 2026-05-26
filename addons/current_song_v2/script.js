@@ -44,6 +44,9 @@ const poller = new SnifferPoller({
 	},
 	onSongEnded: function(data) {
 		app.prevData = app.snifferData;
+		// Snapshot tracker outputs BEFORE generateFeedback / next-song tracker reset.
+		app.snapshotHasPreviousBest = tracker.hasPreviousBest();
+		app.snapshotFinal = tracker.getFinal();
 		app.mode = 1;
 		modeOneSetAt = Date.now();
 
@@ -69,7 +72,13 @@ const app = new Vue({
 		prevData: {},
 		snifferData: {},
 		feedback: [],
-		feedbackIdx: 0
+		feedbackIdx: 0,
+		// (v0.6.10 amendment) Snapshots of tracker outputs at onSongEnded time.
+		// See current_song_v3/script.js for full rationale — short version: the
+		// tracker's onSongChanged resets previousBest/currentAttempt mid-min-hold
+		// in NSP, collapsing the `v-if="hasPreviousBest()"` mode-1 block.
+		snapshotHasPreviousBest: null,
+		snapshotFinal: null
 	},
 	methods: {
 		cycleFeedback: function() {
@@ -79,9 +88,15 @@ const app = new Vue({
 			}
 		},
 		hasPreviousBest: function() {
+			if (this.mode === 1 && this.snapshotHasPreviousBest !== null) {
+				return this.snapshotHasPreviousBest;
+			}
 			return tracker.hasPreviousBest();
 		},
 		trackerScore: function() {
+			if (this.mode === 1 && this.snapshotFinal !== null) {
+				return this.snapshotFinal;
+			}
 			return tracker.getFinal();
 		}
 	},

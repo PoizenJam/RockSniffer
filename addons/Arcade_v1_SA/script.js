@@ -65,6 +65,9 @@ const poller = new SnifferPoller({
 
 	onSongEnded: function(data) {
 		app.prevData = app.snifferData;
+		// Snapshot tracker outputs before reset on next songID flip.
+		app.snapshotHasPreviousBest = tracker.hasPreviousBest();
+		app.snapshotFinal = tracker.getFinal();
 		app.mode = 1;
 		modeOneSetAt = Date.now();
 		generateFeedback();
@@ -92,6 +95,9 @@ const app = new Vue({
 		snifferData: {},
 		feedback: [],
 		feedbackIdx: 0,
+		// (v0.6.10 amendment) See current_song_v3/script.js for rationale.
+		snapshotHasPreviousBest: null,
+		snapshotFinal: null,
         songInfoTransform: "translateX(0px)"
 	},
     mounted: function() {
@@ -117,9 +123,15 @@ const app = new Vue({
 			}
 		},
 		hasPreviousBest: function() {
+			if (this.mode === 1 && this.snapshotHasPreviousBest !== null) {
+				return this.snapshotHasPreviousBest;
+			}
 			return tracker.hasPreviousBest();
 		},
 		trackerScore: function() {
+			if (this.mode === 1 && this.snapshotFinal !== null) {
+				return this.snapshotFinal;
+			}
 			return tracker.getFinal();
 		}
 	},
@@ -182,7 +194,12 @@ const app = new Vue({
 		scrDisplay: function(){
 			$("div.scrDisplay").removeAttr('style');
 			let score = '0000000';
-			if (this.readout.songTimer == 0){
+			// (v0.6.10) Extended early-return: in LaS mode the underlying noteData
+			// is LearnASongNoteData which has no CurrentScore field. Falling through
+			// would render "0000000undefined" → CSS-uppercase "UNDEFINED". Reusing
+			// the placeholder branch keeps the slot at "0000000" frozen in default
+			// (white) styling since removeAttr('style') is called above.
+			if (this.readout.songTimer == 0 || this.notes.CurrentScore === undefined){
 				return score.substr(score.length-7)
 			}
 			let songProg = this.songProgress;
@@ -326,7 +343,9 @@ const app = new Vue({
 			$("div.mltDisplay").removeAttr('style');	
 			let curMlt = '00'
 			let maxMlt = '00'
-			if (this.readout.songTimer == 0){			
+			// (v0.6.10) See scrDisplay rationale — LaS noteData has no
+			// CurrentMultiplier; fall back to the frozen placeholder.
+			if (this.readout.songTimer == 0 || this.notes.CurrentMultiplier === undefined){			
 				return curMlt.substr(curMlt.length-2)+'x/'+maxMlt.substr(maxMlt.length-2)+'x'
 			}	
 			const curM = this.notes.CurrentMultiplier;
@@ -645,6 +664,11 @@ const app = new Vue({
 			if(this.prevNotes == null) {
 				return '0000000';
 			}
+			// (v0.6.10) LaS-mode guard: prev playthrough may be from LaS mode where
+			// the noteData has no CurrentScore field. Show frozen placeholder.
+			if(this.prevNotes.CurrentScore === undefined) {
+				return '0000000';
+			}
 			score = '0000000';	
 			acc = this.prevNotes.Accuracy;
 			PerfP = this.prevNotes.PerfectPhrases;
@@ -805,6 +829,12 @@ const app = new Vue({
 			if(this.prevSong == null) {
 				return '00x/00x';
 				}
+			// (v0.6.10) Null-prevNotes + LaS-mode guard: same rationale as scrDisplayF.
+			// Without this, this.prevNotes.HighestMultiplier in LaS mode is undefined
+			// and renders as "UNDEFINED" via CSS uppercase.
+			if(this.prevNotes == null || this.prevNotes.HighestMultiplier === undefined) {
+				return '00x/00x';
+			}
 			curMlt = '00';
 			maxMlt = '00';
 			maxM = this.prevNotes.HighestMultiplier;

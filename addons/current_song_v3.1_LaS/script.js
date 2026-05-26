@@ -85,6 +85,11 @@ const poller = new SnifferPoller({
 
 	onSongEnded: function(data) {
 		app.prevData = app.snifferData;
+		// Snapshot tracker outputs BEFORE generateFeedback (and before the
+		// tracker's own onSongChanged callback resets currentAttempt/previousBest
+		// later in the same poll on songID flip in NSP).
+		app.snapshotHasPreviousBest = tracker.hasPreviousBest();
+		app.snapshotFinal = tracker.getFinal();
 		app.mode = 1;
 		modeOneSetAt = Date.now();
 		generateFeedback();
@@ -118,6 +123,16 @@ const app = new Vue({
 		snifferData: {},
 		feedback: [],
 		feedbackIdx: 0,
+		// (v0.6.10 amendment) Snapshots of tracker outputs at onSongEnded time.
+		// The tracker resets (currentAttempt=null, previousBest=null) when its
+		// onSongChanged callback fires later in the same poll as the songID flip
+		// in NSP, which makes hasPreviousBest() return false and collapses the
+		// `v-if="hasPreviousBest()"` block in mode 1 — losing the "X% better"
+		// comparison line and the cycled feedback strings even while mode is
+		// still 1 (held by the min-hold). Reading from these snapshots during
+		// mode 1 keeps the comparison visible for the full hold window.
+		snapshotHasPreviousBest: null,
+		snapshotFinal: null,
         songInfoTransform: "translateX(0px)"
 	},
 	
@@ -151,13 +166,22 @@ const app = new Vue({
 			}
 		},
 		
-		//return previous best if available
+		//return previous best if available. Reads from snapshot during mode 1
+		//so the `v-if="hasPreviousBest()"` block in the results view survives
+		//tracker reset (which fires on songID change in NSP, before the
+		//min-hold expires).
 		hasPreviousBest: function() {
+			if (this.mode === 1 && this.snapshotHasPreviousBest !== null) {
+				return this.snapshotHasPreviousBest;
+			}
 			return tracker.hasPreviousBest();
 		},
-		
-		//Return trackerScore
+
+		//Return trackerScore. Same snapshot pattern as hasPreviousBest.
 		trackerScore: function() {
+			if (this.mode === 1 && this.snapshotFinal !== null) {
+				return this.snapshotFinal;
+			}
 			return tracker.getFinal();
 		}
 	},
