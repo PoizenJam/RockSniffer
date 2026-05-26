@@ -21,6 +21,52 @@ function accuracyGradient(accuracy){
 	return "rgb("+red+","+green+", 0)";
 };
 
+// ──────────────────────────────────────────────────────────────────────────
+// MIN-HOLD FOR MODE 1 (v0.6.10)
+//
+// Holds mode 1 (results comparison: prevNotes stats, "X% better than previous
+// best", cycled feedback strings) for at least one full pass through the
+// feedback array before subsequent onSongChanged/onSongStarted callbacks can
+// flip back to mode 0. Min-hold scales with feedback length: a song with five
+// feedback strings holds for 5 × CYCLE_MS, "YOU TRIED!"-only songs for one
+// cycle.
+//
+// State transitions to SONG_SELECTED/SONG_STARTING/SONG_PLAYING override the
+// hold immediately — once the user has progressed past the hub/result screen
+// into the next song, the comparison is no longer useful.
+//
+// Fixes NSP regression where the songID flipped to the next-queued song the
+// moment the user landed in nonstopplayhub, which triggered onSongChanged in
+// the same poll as onSongEnded had set mode = 1, wiping the comparison view
+// before the user could read it.
+// ──────────────────────────────────────────────────────────────────────────
+const CYCLE_MS = 5000;
+let modeOneSetAt = 0;
+let pendingModeFlipTimer = null;
+
+function flipToModeZero(force) {
+	force = !!force;
+	if (pendingModeFlipTimer) {
+		clearTimeout(pendingModeFlipTimer);
+		pendingModeFlipTimer = null;
+	}
+	app.visible = true;
+	if (app.mode !== 1) {
+		app.mode = 0;
+		return;
+	}
+	const minHoldMs = ((app.feedback || []).length || 1) * CYCLE_MS;
+	const elapsed = Date.now() - modeOneSetAt;
+	if (force || elapsed >= minHoldMs) {
+		app.mode = 0;
+	} else {
+		pendingModeFlipTimer = setTimeout(function () {
+			app.mode = 0;
+			pendingModeFlipTimer = null;
+		}, minHoldMs - elapsed);
+	}
+}
+
 //Edit poller functions
 const poller = new SnifferPoller({
 	interval: 100,
@@ -28,21 +74,32 @@ const poller = new SnifferPoller({
 	onData: function(data) {
 		app.snifferData = data;
 	},
-	
+
 	onSongStarted: function(data) {
-		app.mode = 0;
-		app.visible = true;
+		flipToModeZero();
 	},
-	
+
 	onSongChanged: function(data) {
-		app.mode = 0
-		app.visible = true;
+		flipToModeZero();
 	},
-	
+
 	onSongEnded: function(data) {
 		app.prevData = app.snifferData;
 		app.mode = 1;
+		modeOneSetAt = Date.now();
 		generateFeedback();
+	},
+
+	onStateChanged: function(oldState, newState) {
+		// Override min-hold the moment the user clearly progresses to the next
+		// song. SONG_SELECTED = picked from hub; SONG_STARTING = chart loading;
+		// SONG_PLAYING = actively playing. All three unambiguously signal that
+		// the user has moved past the post-results screen.
+		if (newState === STATE_SONG_SELECTED ||
+		    newState === STATE_SONG_STARTING ||
+		    newState === STATE_SONG_PLAYING) {
+			flipToModeZero(true);
+		}
 	}
 });
 
@@ -108,8 +165,16 @@ const app = new Vue({
 	//Grab variables for UI
 	computed: {
 		
-		//Get song details
+		//Get song details. In mode 1 (results comparison), read from prevData so
+		//the song name marquee / album art / artist all reference the song that
+		//just ended — consistent with the prevNotes stats and comparison shown
+		//below. In NSP, snifferData.songDetails advances eagerly to the next
+		//queued song; without this, the marquee would already show song B while
+		//the stats panel shows song A's data. (v0.6.10)
 		song: function() {
+			if (this.mode === 1 && this.prevData && this.prevData.songDetails) {
+				return this.prevData.songDetails;
+			}
 			if(!this.snifferData) {
 				return null;
 			}

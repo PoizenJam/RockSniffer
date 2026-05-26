@@ -1,3 +1,34 @@
+// ──────────────────────────────────────────────────────────────────────────
+// MIN-HOLD FOR MODE 1 (v0.6.10) — see current_song_v3/script.js for detailed
+// rationale. Identical mechanism applied across all six mode-1 addons.
+// ──────────────────────────────────────────────────────────────────────────
+const CYCLE_MS = 5000;
+let modeOneSetAt = 0;
+let pendingModeFlipTimer = null;
+
+function flipToModeZero(force) {
+	force = !!force;
+	if (pendingModeFlipTimer) {
+		clearTimeout(pendingModeFlipTimer);
+		pendingModeFlipTimer = null;
+	}
+	app.visible = true;
+	if (app.mode !== 1) {
+		app.mode = 0;
+		return;
+	}
+	const minHoldMs = ((app.feedback || []).length || 1) * CYCLE_MS;
+	const elapsed = Date.now() - modeOneSetAt;
+	if (force || elapsed >= minHoldMs) {
+		app.mode = 0;
+	} else {
+		pendingModeFlipTimer = setTimeout(function () {
+			app.mode = 0;
+			pendingModeFlipTimer = null;
+		}, minHoldMs - elapsed);
+	}
+}
+
 const poller = new SnifferPoller({
 	interval: 500,
 
@@ -5,15 +36,26 @@ const poller = new SnifferPoller({
 		app.snifferData = data;
 	},
 	onSongStarted: function(data) {
-		app.mode = 0;
-		app.visible = true;
+		flipToModeZero();
 		clearTimeout(hideTimeout);
+	},
+	onSongChanged: function(data) {
+		flipToModeZero();
 	},
 	onSongEnded: function(data) {
 		app.prevData = app.snifferData;
 		app.mode = 1;
+		modeOneSetAt = Date.now();
 
 		generateFeedback();
+	},
+	onStateChanged: function(oldState, newState) {
+		// Override min-hold once user has progressed past post-results screen (v0.6.10).
+		if (newState === STATE_SONG_SELECTED ||
+		    newState === STATE_SONG_STARTING ||
+		    newState === STATE_SONG_PLAYING) {
+			flipToModeZero(true);
+		}
 	}
 });
 
@@ -44,7 +86,12 @@ const app = new Vue({
 		}
 	},
 	computed: {
+		// In mode 1 (results), read from prevData so song name/album art match
+		// the prevNotes stats displayed below (v0.6.10).
 		song: function() {
+			if (this.mode === 1 && this.prevData && this.prevData.songDetails) {
+				return this.prevData.songDetails;
+			}
 			if(!this.snifferData) {
 				return null;
 			}
