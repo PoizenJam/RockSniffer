@@ -66,6 +66,17 @@ const poller = new SnifferPoller({
 	onSongEnded: function(data) {
 		app.prevData = app.snifferData;
 		// Snapshot tracker outputs before reset on next songID flip.
+		// (v0.6.11) Manually finalize the last section BEFORE snapshotting.
+		// tracker.onSongEnded fires AFTER addon.onSongEnded in _doOnSongEnded's
+		// callback order, so without this the snapshot captures pre-finalize
+		// state — sections[last].Accuracy is the {} placeholder's undefined,
+		// getFinal() defaults that to 0, and the displayed "X% worse than
+		// previous best" message reads 0 - previousBest.lastSection.Accuracy.
+		// finalize() is idempotent as of v0.6.11; the tracker's own later call
+		// is now a no-op.
+		if (tracker.currentAttempt) {
+			tracker.currentAttempt.finalize(poller.getCurrentReadout());
+		}
 		app.snapshotHasPreviousBest = tracker.hasPreviousBest();
 		app.snapshotFinal = tracker.getFinal();
 		app.mode = 1;

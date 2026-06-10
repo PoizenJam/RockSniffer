@@ -412,6 +412,13 @@ class PlaythroughBySection {
 
 	//finalize info for storage
 	finalize(readout) {
+		// (v0.6.11) Idempotent guard. As of v0.6.11, mode-1 addons call this from
+		// their onSongEnded BEFORE the tracker's own onSongEnded fires, so that
+		// snapshotFinal captures finalized last-section data. The tracker's later
+		// finalize() call in onSongEnded is now a no-op after the first one — we
+		// can't onSectionFinished with `undefined` (would create an array slot
+		// keyed by the string "undefined").
+		if (this.currentSection === undefined) return;
 		this.onSectionFinished(this.currentSection, readout.noteData);
 
 		delete this.currentSection;
