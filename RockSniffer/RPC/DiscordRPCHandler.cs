@@ -124,15 +124,9 @@ namespace RockSniffer.RPC
                 //Set accuracy as text for arrangement icon
                 rp.Assets.SmallImageText = accuracyText;
 
-                // (v0.6.8) Pattern-match guard added. Pre-v0.6.8 `readout.mode` was
-                // set inside ReadNoteData / ReadScoreAttackNoteData, so mode ==
-                // SCOREATTACK strictly implied noteData was ScoreAttackNoteData,
-                // and the cast on the next line was safe. v0.6.8 derives mode
-                // from gameStage instead, so mode and noteData are no longer
-                // structurally coupled: e.g. in panel_bib (SA options menu) mode
-                // is SCOREATTACK but noteData may be stale LearnASongNoteData
-                // from a prior session. The pattern-match guard makes the cast
-                // safe under the new contract.
+                // mode is derived from gameStage and no longer implies the noteData type
+                // (e.g. SCOREATTACK mode with stale LearnASongNoteData in panel_bib);
+                // the pattern match keeps the cast safe.
                 if (readout.mode == RSMode.SCOREATTACK && readout.noteData is ScoreAttackNoteData sand)
                 {
                     rp.Assets.SmallImageText = $"{FormattableString.Invariant($"{sand.CurrentScore:n0}")} x{sand.CurrentMultiplier} | {rp.Assets.SmallImageText}";
@@ -187,11 +181,8 @@ namespace RockSniffer.RPC
                     }
                     else if (gameStage.StartsWith("nsp") || gameStage.StartsWith("nonstopplay"))
                     {
-                        // (v0.6.8) Added "nonstopplay" prefix to also catch the full-word
-                        // Nonstop gameStages: nonstopplay (top-level entry), nonstopplaygame
-                        // (active gameplay), nonstopplayhub (between-songs lobby). Pre-v0.6.8
-                        // only the abbreviated nsp_* family was caught, so the full-word
-                        // stages fell through to no state at all on the Discord RPC label.
+                        // "nonstopplay" prefix also catches the full-word stages (nonstopplay,
+                        // nonstopplaygame, nonstopplayhub) alongside the nsp_* family.
                         state = "Nonstop Play";
                     }
                     else if (gameStage.StartsWith("sa"))

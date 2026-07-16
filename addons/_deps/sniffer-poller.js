@@ -1,29 +1,6 @@
-// SnifferState string constants (v0.6.9).
-//
-// Pre-v0.6.7 these were integers matching the C# enum underlying values
-// (NONE=0..SONG_PAUSED=6). v0.6.7 added [JsonConverter(typeof(StringEnumConverter))]
-// to the currentState field in AddonServiceListener.JsonResponse, which made the
-// JSON emit "currentState": "SONG_PLAYING" instead of 4. The integer constants
-// became silently broken — every `state == STATE_*` comparison was string==int
-// which always evaluates false.
-//
-// Symptoms before v0.6.9:
-//   - vocals addon never displayed lyrics (gate at vocals/script.js:27 always
-//     failed, so display was always blanked).
-//   - playthrough-tracker.js never called update() / update_phrase() during
-//     gameplay (gate at line 115 always failed), so per-phrase / per-section
-//     accuracy never accumulated. Phrases displayed grey in current_song_* and
-//     Arcade_* addons because getPhraseAccuracy returned 'Rest' on the empty
-//     constructor-placeholder data.
-//   - accuracy_chart never collected data points (similar gate broke).
-//   - sniffer-poller.js internal lifecycle gates (lines 133, 140, 173) failed
-//     too; songID-change tracking kept most things working but state-driven
-//     transitions were silently no-ops.
-//
-// Fix: change the constants to the enum member NAMES, which is what the JSON
-// now carries. All consumer comparisons (`state == STATE_SONG_PLAYING`,
-// `data.currentState != STATE_IN_MENUS`, etc.) start working immediately
-// without per-addon edits.
+// SnifferState string constants. These must match the C# enum member NAMES —
+// AddonServiceListener serializes currentState with StringEnumConverter, so the
+// JSON carries "SONG_PLAYING", not the underlying integer.
 const STATE_NONE = "NONE";
 const STATE_IN_MENUS = "IN_MENUS";
 const STATE_SONG_SELECTED = "SONG_SELECTED";
@@ -229,13 +206,8 @@ class SnifferPoller {
 
 	//Get current accuract
 	getCurrentAccuracy(decimals = 2) {
-		// Defensive null checks (v0.6.5 hotfix): _prevdata.memoryReadout.noteData can be
-		// null in transient states — e.g., the C# RSMemoryReader's first DoReadout calls
-		// before any song-mode memory has been populated, or when the noteData magic-number
-		// validation fails on a poll between songs. Without these checks, addons that call
-		// getCurrentAccuracy from onSongEnded handlers (which now fires on songID change too,
-		// not just on state transitions) would throw "Cannot read properties of null" Vue
-		// errors and break the overlay.
+		// noteData can be null in transient states (first readouts, inter-song polls);
+		// without these checks, addons calling getCurrentAccuracy from onSongEnded throw.
 		if(!this._prevdata || !this._prevdata.memoryReadout || !this._prevdata.memoryReadout.noteData) {
 			return 0;
 		}
@@ -248,31 +220,14 @@ class SnifferPoller {
 		return parseFloat(accuracy.toFixed(decimals));
 	}
 
-	//Get current arrangement (v0.6.5 hotfix5.1)
-	//
+	//Get current arrangement.
 	// Resolution order:
-	//   1) Direct arrangementID match (exact — works in LaS/SA when memory has populated;
-	//      fails in Nonstop where the arrangement_hash pointer doesn't populate). Allows
-	//      bonus/alternate arrangements to match — the memory hash is exact, we trust it.
-	//   2) Path filter — match by currentPath (Bass/Lead/Rhythm) read from a stable byte
-	//      pointer in memory. First non-bonus, non-alternate match wins. If no regular
-	//      match exists, falls through to first bonus/alt match. Path is populated from
-	//      Rocksmith launch onward and works in Nonstop Play.
-	//   3) Returns null if neither resolves — callers should null-check (the playthrough
-	//      tracker has defensive guards for this).
-	//
-	// HOTFIX5 CLEAN CUT: removed the prevPath and defaultPath fallback branches that
-	// previous versions used as last-resort guesses. Those were a per-addon mutable variable
-	// (this.prevPath, set on every successful resolution) and a global `defaultPath` constant
-	// from the now-removed config-ui.js (defaulting to "Lead"). With currentPath providing
-	// a reliable real-time signal, those guesses are no longer necessary; an unresolved
-	// arrangement returns null instead of silently picking a wrong path.
-	//
-	// HOTFIX5.1: restored first-match-wins behavior in step 2. Initial hotfix5 used a
-	// count-and-only-pick-if-one approach that left sections/phrases unrendered during
-	// song-select when a song happened to have multiple arrangements with type matching
-	// currentPath. Legacy code (using prevPath/defaultPath) was always first-match-wins,
-	// which is what users expect.
+	//   1) Direct arrangementID match — exact; trusts the memory hash, so bonus and
+	//      alternate arrangements can match.
+	//   2) currentPath filter (Lead/Rhythm/Bass byte from memory, populated from
+	//      launch and valid in Nonstop Play) — first non-bonus, non-alternate match
+	//      wins, falling through to bonus/alternate if no regular match exists.
+	//   3) null if neither resolves — callers null-check.
 	getCurrentArrangement() {
 		if(!this._prevdata) {
 			return null;

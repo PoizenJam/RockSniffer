@@ -7,21 +7,11 @@ class PlaythroughTracker {
 		this.previousBest = null;
 		this.currentAttempt = null;
 		this.currentAttemptPhrase = null;
-		// (v0.6.8) Removed `this.wasNonstopMode` field. Pre-v0.6.8 this gated
-		// playthrough_tracker writes for Nonstop Play because arrangement
-		// resolution was unreliable there; v0.6.8's PLAY_arrID chain solved
-		// that, so the gate (and the field that supported it) are gone.
-		// Nonstop plays now save to playthrough_tracker on equal footing
-		// with LaS and SA plays.
 
-		// (v0.6.8) True if the current song run was started while in a
-		// Multiplayer mode (RSMode.MULTIPLAYER — split_game, mp_*, duet_*,
-		// h2h_*). Used to gate playthrough_tracker writes — multi-user note
-		// data isn't supported yet, so MP attempts shouldn't be saved to
-		// per-section / per-phrase storage. Captured in onSongStarted from
-		// the v0.6.8 gameStage-derived mode field on the memory readout.
-		// Default false so any unexpected pre-onSongStarted onSongEnded call
-		// doesn't accidentally skip a legitimate save.
+		// True if the current song run started in a Multiplayer mode (split_game,
+		// mp_*, duet_*, h2h_*). Checked at song end to skip storage writes — multi-user
+		// note data isn't supported. Defaults false so an unexpected pre-onSongStarted
+		// onSongEnded call doesn't skip a legitimate save.
 		this.wasMultiplayerMode = false;
 
 		poller.onData((data) => this.onData(data));
@@ -47,6 +37,25 @@ class PlaythroughTracker {
 			return true;
 		}
 		if(this.currentAttempt == null) {
+			return false;
+		}
+
+		// Ghost-attempt guard: a stale or throttled poller can fire onSongEnded with a
+		// mostly-placeholder attempt whose last-section accuracy ties the stored best,
+		// which tie-counts-as-better (>= 0) would let overwrite the full record. Never
+		// allow an attempt with fewer populated sections to replace a fuller stored
+		// best; equal counts preserve tie-counts-as-better for real replays.
+		var countPopulated = function(sections) {
+			if(sections == null) return 0;
+			var n = 0;
+			for(var i = 0; i < sections.length; i++) {
+				var s = sections[i];
+				if(s != null && s.TotalNotes != null) n++;
+			}
+			return n;
+		};
+		if(countPopulated(this.currentAttempt.sections) < countPopulated(this.previousBest.sections)) {
+			console.warn("PlaythroughTracker.isBetter: rejecting attempt with fewer populated sections than previous best (ghost-attempt guard)");
 			return false;
 		}
 
@@ -127,16 +136,8 @@ class PlaythroughTracker {
 	onSongStarted(song) {
 		this.previousBest = null;
 
-		// (v0.6.8) Removed Nonstop-mode gameStage capture. Pre-v0.6.8 captured
-		// gameStage here at song-start to set this.wasNonstopMode, which was
-		// then checked at song-end to skip writes. v0.6.8's PLAY_arrID chain
-		// made arrangement resolution reliable in Nonstop Play, so the gate
-		// (and the capture) are no longer needed. See onSongEnded for the
-		// matching removal.
 
-		// (v0.6.8) Capture MULTIPLAYER mode at song start via the v0.6.8
-		// gameStage-derived mode field. Checked at song-end to skip writes
-		// for MP attempts — see onSongEnded.
+		// Capture Multiplayer mode at song start; checked at song end.
 		var readout = this.poller.getCurrentReadout();
 		this.wasMultiplayerMode = (readout && readout.mode === "MULTIPLAYER");
 
@@ -159,20 +160,10 @@ class PlaythroughTracker {
 	
 	//Do on song ended
 	onSongEnded(song) {
-		// (v0.6.8) Removed Nonstop-mode early-return gate. Pre-v0.6.8 this
-		// gate skipped all playthrough_tracker setValue calls for songs
-		// played in Nonstop because arrangement resolution was unreliable
-		// there. v0.6.8's PLAY_arrID chain solved Nonstop arrangement
-		// resolution, so Nonstop plays now save on equal footing with LaS
-		// and SA plays. See PlaythroughHistory.cs for the matching removal.
 
-		// (v0.6.8) MULTIPLAYER GATE:
-		// Skip all playthrough_tracker writes for MP attempts. Multi-user
-		// note data and per-user arrangements aren't tracked yet, so
-		// per-section / per-phrase storage would receive single-user data
-		// tagged under a shared songID + arrangementID key, polluting the
-		// user's tracking. See PlaythroughHistory.cs for the matching
-		// gate on the C# history side.
+		// Skip storage writes for Multiplayer attempts — multi-user note data isn't
+		// tracked, so single-user data under a shared songID+arrangementID key would
+		// pollute tracking. Matching gate on the C# history side in PlaythroughHistory.cs.
 		if (this.wasMultiplayerMode) {
 			console.log("PlaythroughTracker.onSongEnded: skipping save (MULTIPLAYER mode — multi-user note data not yet supported)");
 			return;
@@ -197,21 +188,11 @@ class PlaythroughTracker {
 
 		var finalReadout = this.poller.getCurrentReadout();
 
-		// Empty-shell guard A (v0.6.5 hotfix3): skip if the readout has no notes.
-		// CRITICAL ORDER: this MUST run BEFORE currentAttempt.finalize() — finalize()
-		// unconditionally writes finalReadout.noteData into sections[currentSection],
-		// which can poison the section data with the PREVIOUS song's stats during
-		// Nonstop Play transitions (memoryReadout still holds previous song's noteData
-		// when next song's onSongStarted/onSongEnded racing logic fires). After
-		// finalize() runs, currentAttempt.sections looks "valid" even though the user
-		// never played — and the empty-shell guards we used to run AFTER finalize()
-		// were fooled into thinking it was a real attempt.
-		//
-		// In LaS song-select, the JS poller can fire _doOnSongStarted (creating a fresh
-		// currentAttempt) when the user just browses through a song — getCurrentArrangement
-		// falls through to prevPath/defaultPath and returns SOMETHING even though the user
-		// never actually played. The next songID flip then fires onSongEnded for that empty
-		// attempt. Without these guards, that pollutes SQLite addon storage with shells.
+		// Empty-shell guard A: skip if the readout has no notes. Must run BEFORE
+		// finalize() — finalize() stamps finalReadout.noteData into sections[currentSection],
+		// which can make a never-played attempt look valid (song-select browsing creates
+		// empty attempts, and NSP transitions can leave the previous song's noteData in
+		// the readout).
 		var totalNotes = (finalReadout && finalReadout.noteData)
 			? finalReadout.noteData.TotalNotes
 			: 0;
@@ -220,10 +201,8 @@ class PlaythroughTracker {
 			return;
 		}
 
-		// Empty-shell guard B (v0.6.5 hotfix3): skip if no section was ever finished.
-		// Same ORDER constraint — must run BEFORE finalize(). We check the section data
-		// BEFORE finalize() pollutes it. A section that hasn't had onSectionFinished()
-		// called on it during real play is still a `{}` placeholder from the constructor.
+		// Empty-shell guard B: skip if no section was ever finished. Same ordering
+		// constraint — must check BEFORE finalize() stamps the section data.
 		var finishedSections = 0;
 		if(this.currentAttempt && this.currentAttempt.sections) {
 			for(var i = 0; i < this.currentAttempt.sections.length; i++) {
@@ -263,9 +242,6 @@ class PlaythroughTracker {
 		this.currentAttempt = null;
 		this.currentAttemptPhrase = null;
 		this.previousBest = null;
-		// (v0.6.8) The pre-v0.6.8 comment about not resetting wasNonstopMode
-		// here is removed alongside the field itself — see onSongStarted /
-		// onSongEnded for the gate removal context.
 	}
 }
 
@@ -412,12 +388,9 @@ class PlaythroughBySection {
 
 	//finalize info for storage
 	finalize(readout) {
-		// (v0.6.11) Idempotent guard. As of v0.6.11, mode-1 addons call this from
-		// their onSongEnded BEFORE the tracker's own onSongEnded fires, so that
-		// snapshotFinal captures finalized last-section data. The tracker's later
-		// finalize() call in onSongEnded is now a no-op after the first one — we
-		// can't onSectionFinished with `undefined` (would create an array slot
-		// keyed by the string "undefined").
+		// Idempotent: mode-1 addons call finalize() early from their onSongEnded (before
+		// the tracker's own callback) so snapshots capture finalized data; the tracker's
+		// later call must no-op rather than re-finalize on an undefined currentSection.
 		if (this.currentSection === undefined) return;
 		this.onSectionFinished(this.currentSection, readout.noteData);
 

@@ -17,10 +17,8 @@ function accuracyGradient(accuracy){
 	return "rgb("+red+","+green+", 0)";
 };
 
-// ──────────────────────────────────────────────────────────────────────────
-// MIN-HOLD FOR MODE 1 (v0.6.10) — see current_song_v3/script.js for detailed
-// rationale. Identical mechanism applied across all six mode-1 addons.
-// ──────────────────────────────────────────────────────────────────────────
+// Min-hold for mode 1 — see current_song_v3/script.js. Identical mechanism
+// across all six mode-1 addons.
 const CYCLE_MS = 5000;
 let modeOneSetAt = 0;
 let pendingModeFlipTimer = null;
@@ -65,15 +63,10 @@ const poller = new SnifferPoller({
 
 	onSongEnded: function(data) {
 		app.prevData = app.snifferData;
-		// Snapshot tracker outputs before reset on next songID flip.
-		// (v0.6.11) Manually finalize the last section BEFORE snapshotting.
-		// tracker.onSongEnded fires AFTER addon.onSongEnded in _doOnSongEnded's
-		// callback order, so without this the snapshot captures pre-finalize
-		// state — sections[last].Accuracy is the {} placeholder's undefined,
-		// getFinal() defaults that to 0, and the displayed "X% worse than
-		// previous best" message reads 0 - previousBest.lastSection.Accuracy.
-		// finalize() is idempotent as of v0.6.11; the tracker's own later call
-		// is now a no-op.
+		// Finalize the last section, then snapshot tracker outputs, before
+		// generateFeedback and the tracker's own callbacks (which fire after this
+		// handler and would otherwise leave the last section unfinalized, then reset
+		// the data). finalize() is idempotent; the tracker's later call no-ops.
 		if (tracker.currentAttempt) {
 			tracker.currentAttempt.finalize(poller.getCurrentReadout());
 		}
@@ -85,8 +78,7 @@ const poller = new SnifferPoller({
 	},
 
 	onStateChanged: function(oldState, newState) {
-		// Override min-hold once the user has clearly progressed past the
-		// post-results screen (v0.6.10).
+		// Override min-hold once the user has progressed past the results screen.
 		if (newState === STATE_SONG_SELECTED ||
 		    newState === STATE_SONG_STARTING ||
 		    newState === STATE_SONG_PLAYING) {
@@ -106,7 +98,7 @@ const app = new Vue({
 		snifferData: {},
 		feedback: [],
 		feedbackIdx: 0,
-		// (v0.6.10 amendment) See current_song_v3/script.js for rationale.
+		// Snapshot fields — see current_song_v3/script.js.
 		snapshotHasPreviousBest: null,
 		snapshotFinal: null,
         songInfoTransform: "translateX(0px)"
@@ -147,8 +139,7 @@ const app = new Vue({
 		}
 	},
 	computed: {
-		// In mode 1 (results), read from prevData so song name/album art match
-		// the prevNotes stats displayed below (v0.6.10).
+		// In mode 1, read from prevData so song info matches the stats shown.
 		song: function() {
 			if (this.mode === 1 && this.prevData && this.prevData.songDetails) {
 				return this.prevData.songDetails;
@@ -186,8 +177,7 @@ const app = new Vue({
 		phraseStartTime: function() {
 			if (this.readout.songTimer == 0){return 0;}
 			const currentPhrase = poller.getCurrentPhrase();
-			// Defensive null check (v0.6.5 hotfix): poller.getCurrentPhrase() can return null
-			// when noteData hasn't been populated yet, or during song transitions in Nonstop Play.
+			// getCurrentPhrase() can return null before noteData populates or during NSP transitions.
 			if(currentPhrase == null){return 0;}
 			if(currentPhrase.index == 0){return 0;}
 			return (currentPhrase.startTime / this.song.songLength) * 100;
@@ -347,9 +337,7 @@ const app = new Vue({
 			if(this.song.arrangements == null) {return null;}
 			var arrangements = this.song.arrangements;
 			
-			//STEP 1: arrangementID direct match (v0.6.5 hotfix5)
-			//Lets bonus/alternate arrangements be picked when they're the live one — the
-			//memory hash is exact so we trust it absolutely.
+			//STEP 1: arrangementID direct match — exact memory hash, bonus/alternate allowed.
 			for (let i = arrangements.length - 1; i >= 0; i--) {
 				let arrangement = arrangements[i];
 				if(arrangement.arrangementID && arrangement.arrangementID.length == 32 &&
@@ -358,10 +346,7 @@ const app = new Vue({
 				}
 			}
 			
-			//STEP 2: currentPath filter — first non-bonus, non-alternate match wins
-			//(v0.6.5 hotfix5.1 — restored legacy first-match behavior; the count-and-only-pick-if-one
-			//logic from initial hotfix5 was leaving sections unrendered during song-select when a
-			//song happened to have multiple arrangements with type matching currentPath.)
+			//STEP 2: currentPath filter — first non-bonus, non-alternate match wins.
 			var currentPath = this.readout.currentPath;
 			if(currentPath) {
 				for (let i = 0; i < arrangements.length; i++) {
@@ -485,7 +470,7 @@ const app = new Vue({
 		},
 		/* PREV */
 		prevSong: function() {
-			// Defensive null check (v0.6.5 hotfix)
+			// Defensive null check
 			if(!this.prevData) {
 				return null;
 			}
@@ -499,7 +484,7 @@ const app = new Vue({
 			return this.prevData.memoryReadout;
 		},
 		prevNotes: function() {
-			// Defensive null check (v0.6.5 hotfix)
+			// Defensive null check
 			var pr = this.prevReadout;
 			if(!pr) {
 				return null;
@@ -512,8 +497,7 @@ const app = new Vue({
 			if(this.prevSong == null) {
 				return '0100% 0000/0000';
 				}
-			// Defensive null check (v0.6.5 hotfix): this.prevNotes can be null when the
-			// previous poll's noteData was null — transient between songs in Nonstop Play.
+			// prevNotes can be null when the previous poll's noteData was null.
 			if(this.prevNotes == null) {
 				return '0100% 0000/0000';
 			}
@@ -585,7 +569,7 @@ const app = new Vue({
 			if(this.prevSong == null) {
 				return '0000/0000';
 				}
-			// Defensive null check (v0.6.5 hotfix)
+			// Defensive null check
 			if(this.prevNotes == null) {
 				return '0000/0000';
 			}

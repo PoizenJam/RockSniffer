@@ -27,7 +27,7 @@ namespace RockSniffer
 {
     class Program
     {
-        internal const string version = "0.6.11";
+        internal const string version = "0.6.12";
 
         internal static ICache cache;
         internal static Config config;
@@ -309,17 +309,10 @@ namespace RockSniffer
                     playthroughHistory.OnActualSongStart(args);
                 };
 
-                // Actual gameplay end (when Sniffer.cs fires OnActualSongEnd).
-                //
-                // (v0.6.5) Switched from Logger.OnEventEndLogged to sniffer.OnActualSongEnd:
-                //   - sniffer is a fresh instance per Run() call, so no static-handler
-                //     accumulation issue (Logger is static — that's why _eventEndHandler
-                //     used to need explicit unsubscribe). No cleanup needed here.
-                //   - sniffer.OnActualSongEnd carries the full song-run arrangement context
-                //     (arrangementID / path / tuning preserved from song start, plus a
-                //     readout snapshot) — which is what produces the correct values in
-                //     playthrough_history during Nonstop Play, fixing the blank-arrangement
-                //     bug introduced when arrangementID validation was added.
+                // Actual gameplay end (Sniffer.cs OnActualSongEnd). The args carry the
+                // arrangement context captured at song start, which keeps playthrough_history
+                // correct during Nonstop Play. sniffer is a fresh instance per Run(), so no
+                // handler cleanup is needed.
                 sniffer.OnActualSongEnd += (sender, args) => {
                     playthroughHistory.OnActualSongEnd(args);
                 };
@@ -427,23 +420,9 @@ namespace RockSniffer
                     outputtext = outputtext.Replace("%TOOLKIT_COMMENT%", details.toolkit.comment);
                 }
 
-                // %TUNING% (v0.6.9)
-                //
-                // Tuning name of the currently-loaded arrangement (e.g. "E Standard",
-                // "D Standard (Capo Fret 2)"). Resolved by looking up the arrangement
-                // in details.arrangements[] whose arrangementID matches the readout's
-                // arrangementID — the same disambiguator used everywhere else in the
-                // codebase, including for Path-byte fallback in Sniffer.cs.
-                //
-                // Empty string when no match resolves: either details aren't loaded
-                // yet (handled by the validity check below, which blanks everything),
-                // or arrangementID is null/empty (briefly true at the start of a song
-                // run before either pointer chain populates), or no arrangement in
-                // the list matches (shouldn't happen in practice but defensive).
-                //
-                // Goes in the song-detail block (above the IsValid check) so the
-                // "blank on invalid details" rule applies correctly — we can't
-                // resolve tuning without details.arrangements.
+                // %TUNING% — tuning name of the loaded arrangement, resolved by arrangementID
+                // match. Empty when unresolvable. Song-detail block placement so the
+                // blank-on-invalid-details rule applies.
                 string tuningName = "";
                 if (!string.IsNullOrEmpty(memReadout.arrangementID) && details.arrangements != null)
                 {
@@ -454,6 +433,43 @@ namespace RockSniffer
                     }
                 }
                 outputtext = outputtext.Replace("%TUNING%", tuningName);
+
+                // %CURRENT_SECTION% / %CURRENT_PHRASE% — chart-authored section/phrase name at
+                // the song timer position (e.g. "verse 2", "solo 1"); scan mirrors the JS
+                // getSectionAt/getPhraseAt. Empty when the timer is 0 or unresolvable, so the
+                // files blank between songs and OBS text sources hide — same contract as
+                // %CURRENT_PATH%.
+                string currentSectionName = "";
+                string currentPhraseName = "";
+                if (!string.IsNullOrEmpty(memReadout.arrangementID) && details.arrangements != null && memReadout.songTimer > 0)
+                {
+                    var sectionArr = details.arrangements.Find(a => a.arrangementID == memReadout.arrangementID);
+                    if (sectionArr != null)
+                    {
+                        if (sectionArr.sections != null)
+                        {
+                            foreach (var sec in sectionArr.sections)
+                            {
+                                if (memReadout.songTimer > sec.startTime)
+                                {
+                                    currentSectionName = sec.name ?? "";
+                                }
+                            }
+                        }
+                        if (sectionArr.phraseIterations != null)
+                        {
+                            foreach (var ph in sectionArr.phraseIterations)
+                            {
+                                if (memReadout.songTimer > ph.startTime)
+                                {
+                                    currentPhraseName = ph.name ?? "";
+                                }
+                            }
+                        }
+                    }
+                }
+                outputtext = outputtext.Replace("%CURRENT_SECTION%", currentSectionName);
+                outputtext = outputtext.Replace("%CURRENT_PHRASE%", currentPhraseName);
 
                 //If this output contained song detail information
                 if (outputtext != of.format)
@@ -477,22 +493,10 @@ namespace RockSniffer
                 outputtext = outputtext.Replace("%TOTAL_NOTES%", nd.TotalNotes.ToString());
                 outputtext = outputtext.Replace("%CURRENT_ACCURACY%", FormatPercentage(nd.Accuracy));
 
-                // %CURRENT_PATH% / %CURRENT_PATH_BYTE% (v0.6.9)
-                //
-                // The user's currently-selected Path (arrangement type) at the menu
-                // level, populated from launch (defaults to "Lead" / 0x01). Updates
-                // whenever the user actively switches Path in options or song-select,
-                // and is persistent across all gameStages including main menu, song
-                // select, options screens, and Nonstop Play. See
-                // RSMemoryReader.GetCurrentPathPointer for the source.
-                //
-                // %CURRENT_PATH% emits "Lead" / "Rhythm" / "Bass" / "" (empty for
-                // unknown byte values). The empty fallback is intentional — OBS
-                // text sources hide automatically when the underlying file is empty,
-                // which is the natural UX for "no path resolvable" state.
-                //
-                // Goes in the memory-readout block (below the IsValid check) so
-                // path.txt updates even when no song is loaded (main menu, etc.).
+                // %CURRENT_PATH% / %CURRENT_PATH_BYTE% — menu-level Path selection
+                // ("Lead"/"Rhythm"/"Bass"), populated from launch and valid in all gameStages.
+                // Empty for unknown byte values so OBS text sources hide. Memory-readout block
+                // placement so path.txt updates even with no song loaded.
                 outputtext = outputtext.Replace("%CURRENT_PATH%", memReadout.currentPath ?? "");
                 outputtext = outputtext.Replace("%CURRENT_PATH_BYTE%", memReadout.currentPathByte.ToString());
 

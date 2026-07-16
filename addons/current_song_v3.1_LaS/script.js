@@ -21,25 +21,12 @@ function accuracyGradient(accuracy){
 	return "rgb("+red+","+green+", 0)";
 };
 
-// ──────────────────────────────────────────────────────────────────────────
-// MIN-HOLD FOR MODE 1 (v0.6.10)
-//
-// Holds mode 1 (results comparison: prevNotes stats, "X% better than previous
-// best", cycled feedback strings) for at least one full pass through the
-// feedback array before subsequent onSongChanged/onSongStarted callbacks can
-// flip back to mode 0. Min-hold scales with feedback length: a song with five
-// feedback strings holds for 5 × CYCLE_MS, "YOU TRIED!"-only songs for one
-// cycle.
-//
-// State transitions to SONG_SELECTED/SONG_STARTING/SONG_PLAYING override the
-// hold immediately — once the user has progressed past the hub/result screen
-// into the next song, the comparison is no longer useful.
-//
-// Fixes NSP regression where the songID flipped to the next-queued song the
-// moment the user landed in nonstopplayhub, which triggered onSongChanged in
-// the same poll as onSongEnded had set mode = 1, wiping the comparison view
-// before the user could read it.
-// ──────────────────────────────────────────────────────────────────────────
+// Min-hold for mode 1: holds the results comparison visible for at least one
+// full pass through the feedback array (feedback.length × CYCLE_MS) before
+// onSongChanged/onSongStarted may flip back to mode 0. A state transition to
+// SONG_SELECTED/SONG_STARTING/SONG_PLAYING overrides the hold immediately.
+// Needed in Nonstop Play, where the songID flips to the next queued song the
+// moment the hub loads and would otherwise wipe the comparison instantly.
 const CYCLE_MS = 5000;
 let modeOneSetAt = 0;
 let pendingModeFlipTimer = null;
@@ -85,17 +72,11 @@ const poller = new SnifferPoller({
 
 	onSongEnded: function(data) {
 		app.prevData = app.snifferData;
-		// Snapshot tracker outputs BEFORE generateFeedback (and before the
-		// tracker's own onSongChanged callback resets currentAttempt/previousBest
-		// later in the same poll on songID flip in NSP).
-		// (v0.6.11) Manually finalize the last section BEFORE snapshotting.
-		// tracker.onSongEnded fires AFTER addon.onSongEnded in _doOnSongEnded's
-		// callback order, so without this the snapshot captures pre-finalize
-		// state — sections[last].Accuracy is the {} placeholder's undefined,
-		// getFinal() defaults that to 0, and the displayed "X% worse than
-		// previous best" message reads 0 - previousBest.lastSection.Accuracy.
-		// finalize() is idempotent as of v0.6.11; the tracker's own later call
-		// is now a no-op.
+		// Finalize the last section, then snapshot tracker outputs, BEFORE
+		// generateFeedback and before the tracker's own callbacks run: tracker.onSongEnded
+		// fires after this handler, so an unfinalized last section would make getFinal()
+		// read 0, and the tracker's onSongChanged reset wipes the data on NSP songID
+		// flips. finalize() is idempotent; the tracker's own later call no-ops.
 		if (tracker.currentAttempt) {
 			tracker.currentAttempt.finalize(poller.getCurrentReadout());
 		}
@@ -134,14 +115,10 @@ const app = new Vue({
 		snifferData: {},
 		feedback: [],
 		feedbackIdx: 0,
-		// (v0.6.10 amendment) Snapshots of tracker outputs at onSongEnded time.
-		// The tracker resets (currentAttempt=null, previousBest=null) when its
-		// onSongChanged callback fires later in the same poll as the songID flip
-		// in NSP, which makes hasPreviousBest() return false and collapses the
-		// `v-if="hasPreviousBest()"` block in mode 1 — losing the "X% better"
-		// comparison line and the cycled feedback strings even while mode is
-		// still 1 (held by the min-hold). Reading from these snapshots during
-		// mode 1 keeps the comparison visible for the full hold window.
+		// Snapshots of tracker outputs taken at onSongEnded. The tracker resets on the
+		// NSP songID flip while mode 1 is still held; hasPreviousBest()/trackerScore()
+		// read these snapshots during mode 1 so the comparison stays visible for the
+		// full hold window.
 		snapshotHasPreviousBest: null,
 		snapshotFinal: null,
         songInfoTransform: "translateX(0px)"
@@ -200,12 +177,9 @@ const app = new Vue({
 	//Grab variables for UI
 	computed: {
 		
-		//Get song details. In mode 1 (results comparison), read from prevData so
-		//the song name marquee / album art / artist all reference the song that
-		//just ended — consistent with the prevNotes stats and comparison shown
-		//below. In NSP, snifferData.songDetails advances eagerly to the next
-		//queued song; without this, the marquee would already show song B while
-		//the stats panel shows song A's data. (v0.6.10)
+		//Get song details. In mode 1, read from prevData so the marquee/album art
+		//reference the song that just ended — in NSP, snifferData.songDetails already
+		//points at the next queued song.
 		song: function() {
 			if (this.mode === 1 && this.prevData && this.prevData.songDetails) {
 				return this.prevData.songDetails;
@@ -255,7 +229,7 @@ const app = new Vue({
 		phraseStartTime: function() {
 			if (this.readout.songTimer == 0){return 0;}
 			const currentPhrase = poller.getCurrentPhrase();
-			// Defensive null check (v0.6.5 hotfix)
+			// Defensive null check
 			if(currentPhrase == null){return 0;}
 			if(currentPhrase.index == 0){return 0;}
 			return (currentPhrase.startTime / this.song.songLength) * 100;
@@ -273,11 +247,8 @@ const app = new Vue({
 			return phraseHeight*100;
 		},		
 		
-		//Get current arrangement (v0.6.5 hotfix5.1)
-		// Resolution order: arrangementID direct match → currentPath filter (first
-		// non-bonus/non-alternate match wins; falls through to bonus-allowed). Previously
-		// used prevPath / defaultPath fallbacks, removed in favor of the menu-level Path
-		// byte from memory.
+		//Get current arrangement: arrangementID direct match → currentPath filter
+		//(first non-bonus/non-alternate match wins, bonus allowed as fallback).
 		arrangement: function() {
 			if(this.song == null) {return null;}
 			if(this.song.arrangements == null) {return null;}

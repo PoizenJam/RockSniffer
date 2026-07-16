@@ -27,10 +27,14 @@ namespace RockSniffer.Configuration
             { "streaks.txt", "%CURRENT_STREAK%/%HIGHEST_STREAK%" },
             { "game_stage.txt", "%GAME_STAGE%" },
             { "game_state.txt", "%GAME_STATE%" },
-            // (v0.6.9) Current Path (arrangement type, "Lead"/"Rhythm"/"Bass"),
-            // populated from launch and updated whenever the user changes Path
-            // at the menu level. Useful for path-specific OBS scene switching.
-            { "path.txt", "%CURRENT_PATH%" }
+            // Menu-level Path selection ("Lead"/"Rhythm"/"Bass") — useful for
+            // path-specific OBS scene switching.
+            { "path.txt", "%CURRENT_PATH%" },
+            // Chart-authored section/phrase name at the song timer (e.g. "verse 2",
+            // "solo 1"); blank when not in a song. New default keys merge into existing
+            // user configs automatically.
+            { "current_section.txt", "%CURRENT_SECTION%" },
+            { "current_phrase.txt", "%CURRENT_PHRASE%" }
         };
 
         // Playthrough history settings

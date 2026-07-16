@@ -4,10 +4,8 @@
 // Custom CSS:
 // body { background-color: rgba(0, 0, 0, 0); margin: 6px 6px 6px 6px; overflow: hidden; }
 
-// ──────────────────────────────────────────────────────────────────────────
-// MIN-HOLD FOR MODE 1 (v0.6.10) — see current_song_v3/script.js for detailed
-// rationale. Identical mechanism applied across all six mode-1 addons.
-// ──────────────────────────────────────────────────────────────────────────
+// Min-hold for mode 1 — see current_song_v3/script.js. Identical mechanism
+// across all six mode-1 addons.
 const CYCLE_MS = 5000;
 let modeOneSetAt = 0;
 let pendingModeFlipTimer = null;
@@ -56,7 +54,7 @@ const poller = new SnifferPoller({
 		generateFeedback();
 	},
 	onStateChanged: function(oldState, newState) {
-		// Override min-hold once user has progressed past post-results screen (v0.6.10).
+		// Override min-hold once the user has progressed past the results screen.
 		if (newState === STATE_SONG_SELECTED ||
 		    newState === STATE_SONG_STARTING ||
 		    newState === STATE_SONG_PLAYING) {
@@ -92,8 +90,7 @@ const app = new Vue({
 		}
 	},
 	computed: {
-		// In mode 1 (results), read from prevData so song name/album art match
-		// the prevNotes stats displayed below (v0.6.10).
+		// In mode 1, read from prevData so song info matches the stats shown.
 		song: function() {
 			if (this.mode === 1 && this.prevData && this.prevData.songDetails) {
 				return this.prevData.songDetails;
@@ -140,10 +137,8 @@ const app = new Vue({
 				}
 			}
 
-			//STEP 2: currentPath filter — first match wins (v0.6.5 hotfix5.1)
-			//Lets sections/phrases render in song-select before the song actually starts,
-			//and gives Nonstop Play a working resolution path despite the broken
-			//arrangement_hash pointer there.
+			//STEP 2: currentPath filter — first match wins. Renders sections/phrases in
+			//song-select and resolves Nonstop Play, where arrangement_hash doesn't populate.
 			var currentPath = this.readout.currentPath;
 			if(currentPath) {
 				for (let i = 0; i < arrangements.length; i++) {

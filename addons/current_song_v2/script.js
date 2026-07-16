@@ -1,7 +1,5 @@
-// ──────────────────────────────────────────────────────────────────────────
-// MIN-HOLD FOR MODE 1 (v0.6.10) — see current_song_v3/script.js for detailed
-// rationale. Identical mechanism applied across all six mode-1 addons.
-// ──────────────────────────────────────────────────────────────────────────
+// Min-hold for mode 1 — see current_song_v3/script.js. Identical mechanism
+// across all six mode-1 addons.
 const CYCLE_MS = 5000;
 let modeOneSetAt = 0;
 let pendingModeFlipTimer = null;
@@ -44,15 +42,10 @@ const poller = new SnifferPoller({
 	},
 	onSongEnded: function(data) {
 		app.prevData = app.snifferData;
-		// Snapshot tracker outputs BEFORE generateFeedback / next-song tracker reset.
-		// (v0.6.11) Manually finalize the last section BEFORE snapshotting.
-		// tracker.onSongEnded fires AFTER addon.onSongEnded in _doOnSongEnded's
-		// callback order, so without this the snapshot captures pre-finalize
-		// state — sections[last].Accuracy is the {} placeholder's undefined,
-		// getFinal() defaults that to 0, and the displayed "X% worse than
-		// previous best" message reads 0 - previousBest.lastSection.Accuracy.
-		// finalize() is idempotent as of v0.6.11; the tracker's own later call
-		// is now a no-op.
+		// Finalize the last section, then snapshot tracker outputs, before
+		// generateFeedback and the tracker's own callbacks (which fire after this
+		// handler and would otherwise leave the last section unfinalized, then reset
+		// the data). finalize() is idempotent; the tracker's later call no-ops.
 		if (tracker.currentAttempt) {
 			tracker.currentAttempt.finalize(poller.getCurrentReadout());
 		}
@@ -64,7 +57,7 @@ const poller = new SnifferPoller({
 		generateFeedback();
 	},
 	onStateChanged: function(oldState, newState) {
-		// Override min-hold once user has progressed past post-results screen (v0.6.10).
+		// Override min-hold once the user has progressed past the results screen.
 		if (newState === STATE_SONG_SELECTED ||
 		    newState === STATE_SONG_STARTING ||
 		    newState === STATE_SONG_PLAYING) {
@@ -84,10 +77,8 @@ const app = new Vue({
 		snifferData: {},
 		feedback: [],
 		feedbackIdx: 0,
-		// (v0.6.10 amendment) Snapshots of tracker outputs at onSongEnded time.
-		// See current_song_v3/script.js for full rationale — short version: the
-		// tracker's onSongChanged resets previousBest/currentAttempt mid-min-hold
-		// in NSP, collapsing the `v-if="hasPreviousBest()"` mode-1 block.
+		// Snapshots of tracker outputs at onSongEnded — read during mode 1 so the
+		// comparison survives the tracker's NSP reset. See current_song_v3/script.js.
 		snapshotHasPreviousBest: null,
 		snapshotFinal: null
 	},
@@ -112,8 +103,7 @@ const app = new Vue({
 		}
 	},
 	computed: {
-		// In mode 1 (results), read from prevData so song name/album art match
-		// the prevNotes stats displayed below (v0.6.10).
+		// In mode 1, read from prevData so song info matches the stats shown.
 		song: function() {
 			if (this.mode === 1 && this.prevData && this.prevData.songDetails) {
 				return this.prevData.songDetails;

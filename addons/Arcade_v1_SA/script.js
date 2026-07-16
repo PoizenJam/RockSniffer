@@ -17,10 +17,8 @@ function accuracyGradient(accuracy){
 	return "rgb("+red+","+green+", 0)";
 };
 
-// ──────────────────────────────────────────────────────────────────────────
-// MIN-HOLD FOR MODE 1 (v0.6.10) — see current_song_v3/script.js for detailed
-// rationale. Identical mechanism applied across all six mode-1 addons.
-// ──────────────────────────────────────────────────────────────────────────
+// Min-hold for mode 1 — see current_song_v3/script.js. Identical mechanism
+// across all six mode-1 addons.
 const CYCLE_MS = 5000;
 let modeOneSetAt = 0;
 let pendingModeFlipTimer = null;
@@ -65,15 +63,10 @@ const poller = new SnifferPoller({
 
 	onSongEnded: function(data) {
 		app.prevData = app.snifferData;
-		// Snapshot tracker outputs before reset on next songID flip.
-		// (v0.6.11) Manually finalize the last section BEFORE snapshotting.
-		// tracker.onSongEnded fires AFTER addon.onSongEnded in _doOnSongEnded's
-		// callback order, so without this the snapshot captures pre-finalize
-		// state — sections[last].Accuracy is the {} placeholder's undefined,
-		// getFinal() defaults that to 0, and the displayed "X% worse than
-		// previous best" message reads 0 - previousBest.lastSection.Accuracy.
-		// finalize() is idempotent as of v0.6.11; the tracker's own later call
-		// is now a no-op.
+		// Finalize the last section, then snapshot tracker outputs, before
+		// generateFeedback and the tracker's own callbacks (which fire after this
+		// handler and would otherwise leave the last section unfinalized, then reset
+		// the data). finalize() is idempotent; the tracker's later call no-ops.
 		if (tracker.currentAttempt) {
 			tracker.currentAttempt.finalize(poller.getCurrentReadout());
 		}
@@ -85,8 +78,7 @@ const poller = new SnifferPoller({
 	},
 
 	onStateChanged: function(oldState, newState) {
-		// Override min-hold once the user has clearly progressed past the
-		// post-results screen (v0.6.10).
+		// Override min-hold once the user has progressed past the results screen.
 		if (newState === STATE_SONG_SELECTED ||
 		    newState === STATE_SONG_STARTING ||
 		    newState === STATE_SONG_PLAYING) {
@@ -106,7 +98,7 @@ const app = new Vue({
 		snifferData: {},
 		feedback: [],
 		feedbackIdx: 0,
-		// (v0.6.10 amendment) See current_song_v3/script.js for rationale.
+		// Snapshot fields — see current_song_v3/script.js.
 		snapshotHasPreviousBest: null,
 		snapshotFinal: null,
         songInfoTransform: "translateX(0px)"
@@ -147,8 +139,7 @@ const app = new Vue({
 		}
 	},
 	computed: {
-		// In mode 1 (results), read from prevData so song name/album art match
-		// the prevNotes stats displayed below (v0.6.10).
+		// In mode 1, read from prevData so song info matches the stats shown.
 		song: function() {
 			if (this.mode === 1 && this.prevData && this.prevData.songDetails) {
 				return this.prevData.songDetails;
@@ -186,8 +177,7 @@ const app = new Vue({
 		phraseStartTime: function() {
 			if (this.readout.songTimer == 0){return 0;}
 			const currentPhrase = poller.getCurrentPhrase();
-			// Defensive null check (v0.6.5 hotfix): poller.getCurrentPhrase() can return null
-			// when noteData hasn't been populated yet, or during song transitions in Nonstop Play.
+			// getCurrentPhrase() can return null before noteData populates or during NSP transitions.
 			if(currentPhrase == null){return 0;}
 			if(currentPhrase.index == 0){return 0;}
 			return (currentPhrase.startTime / this.song.songLength) * 100;
@@ -205,11 +195,8 @@ const app = new Vue({
 		scrDisplay: function(){
 			$("div.scrDisplay").removeAttr('style');
 			let score = '0000000';
-			// (v0.6.10) Extended early-return: in LaS mode the underlying noteData
-			// is LearnASongNoteData which has no CurrentScore field. Falling through
-			// would render "0000000undefined" → CSS-uppercase "UNDEFINED". Reusing
-			// the placeholder branch keeps the slot at "0000000" frozen in default
-			// (white) styling since removeAttr('style') is called above.
+			// LaS-mode noteData has no CurrentScore — falling through would render
+			// "UNDEFINED" via CSS uppercase. Reuse the frozen placeholder branch.
 			if (this.readout.songTimer == 0 || this.notes.CurrentScore === undefined){
 				return score.substr(score.length-7)
 			}
@@ -354,8 +341,7 @@ const app = new Vue({
 			$("div.mltDisplay").removeAttr('style');	
 			let curMlt = '00'
 			let maxMlt = '00'
-			// (v0.6.10) See scrDisplay rationale — LaS noteData has no
-			// CurrentMultiplier; fall back to the frozen placeholder.
+			// LaS noteData has no CurrentMultiplier — frozen placeholder.
 			if (this.readout.songTimer == 0 || this.notes.CurrentMultiplier === undefined){			
 				return curMlt.substr(curMlt.length-2)+'x/'+maxMlt.substr(maxMlt.length-2)+'x'
 			}	
@@ -506,7 +492,7 @@ const app = new Vue({
 			if(this.song.arrangements == null) {return null;}
 			var arrangements = this.song.arrangements;
 			
-			//STEP 1: arrangementID direct match (v0.6.5 hotfix5)
+			//STEP 1: arrangementID direct match — exact memory hash.
 			for (let i = arrangements.length - 1; i >= 0; i--) {
 				let arrangement = arrangements[i];
 				if(arrangement.arrangementID && arrangement.arrangementID.length == 32 &&
@@ -515,7 +501,7 @@ const app = new Vue({
 				}
 			}
 			
-			//STEP 2: currentPath filter — first match wins (v0.6.5 hotfix5.1)
+			//STEP 2: currentPath filter — first match wins.
 			var currentPath = this.readout.currentPath;
 			if(currentPath) {
 				for (let i = 0; i < arrangements.length; i++) {
@@ -638,8 +624,7 @@ const app = new Vue({
 		},
 		/* PREV */
 		prevSong: function() {
-			// Defensive null check (v0.6.5 hotfix): prevData can be null on the very first
-			// render before any poll has populated it.
+			// prevData can be null before the first poll.
 			if(!this.prevData) {
 				return null;
 			}
@@ -653,9 +638,7 @@ const app = new Vue({
 			return this.prevData.memoryReadout;
 		},
 		prevNotes: function() {
-			// Defensive null check (v0.6.5 hotfix): prevReadout can be null (if prevData is
-			// null) and prevReadout.noteData can be null (if the C# server returned a
-			// readout with noteData=null, e.g. transient inter-song states in Nonstop Play).
+			// prevReadout / prevReadout.noteData can be null in transient inter-song states.
 			var pr = this.prevReadout;
 			if(!pr) {
 				return null;
@@ -669,14 +652,11 @@ const app = new Vue({
 			if(this.prevSong == null) {
 				return '0000000';
 				}
-			// Defensive null check (v0.6.5 hotfix): this.prevNotes (computed from
-			// this.prevReadout.noteData) can be null when the previous poll's noteData
-			// was null — e.g., transient states between songs in Nonstop Play.
+			// prevNotes can be null when the previous poll's noteData was null.
 			if(this.prevNotes == null) {
 				return '0000000';
 			}
-			// (v0.6.10) LaS-mode guard: prev playthrough may be from LaS mode where
-			// the noteData has no CurrentScore field. Show frozen placeholder.
+			// Previous playthrough may be from LaS mode (no CurrentScore) — frozen placeholder.
 			if(this.prevNotes.CurrentScore === undefined) {
 				return '0000000';
 			}
@@ -840,9 +820,7 @@ const app = new Vue({
 			if(this.prevSong == null) {
 				return '00x/00x';
 				}
-			// (v0.6.10) Null-prevNotes + LaS-mode guard: same rationale as scrDisplayF.
-			// Without this, this.prevNotes.HighestMultiplier in LaS mode is undefined
-			// and renders as "UNDEFINED" via CSS uppercase.
+			// Null-prevNotes + LaS-mode guard — same rationale as scrDisplayF.
 			if(this.prevNotes == null || this.prevNotes.HighestMultiplier === undefined) {
 				return '00x/00x';
 			}

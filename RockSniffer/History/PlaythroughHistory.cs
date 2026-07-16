@@ -162,14 +162,8 @@ namespace RockSniffer.History
 
         /// <summary>
         /// Called when Sniffer.cs fires OnActualSongEnd. The args carry the arrangement
-        /// context captured AT SONG START (preserved through the end of the run even if
-        /// currentMemoryReadout has since been updated to a subsequent song's data).
-        ///
-        /// (v0.6.5) Signature changed to accept OnActualSongEndArgs directly. Previously
-        /// this method was wired through Logger.OnEventEndLogged in Program.cs and read
-        /// arrangementID from the live memory readout — which produced blank arrangement
-        /// columns in playthrough_history during Nonstop Play, where the cross-reference
-        /// logic would null the live arrangementID before this call ran.
+        /// context captured at song start (preserved even if currentMemoryReadout has
+        /// advanced to a later song), keeping arrangement columns correct in Nonstop Play.
         /// </summary>
         public void OnActualSongEnd(RockSnifferLib.Events.OnActualSongEndArgs e)
         {
@@ -178,53 +172,17 @@ namespace RockSniffer.History
                 return;
             }
 
-            // MULTIPLAYER GATE (v0.6.8):
-            //
-            // Skip all playthrough history writes (CSV and SQLite) for songs played
-            // in any Multiplayer mode (split_game, mp_*, duet_*, h2h_*). Full
-            // multiplayer support requires a separate larger effort — multiple user
-            // note data streams and per-user arrangements need first-class tracking
-            // before MP rows can be written with the same data quality as LaS / SA /
-            // NSP rows. Until that lands, MP plays are excluded from history rather
-            // than written with potentially-wrong single-user values.
-            //
-            // wasMultiplayerMode is captured at song START in Sniffer.cs using the
-            // v0.6.8 gameStage-derived mode field, same pattern as wasNonstopMode
-            // (which previously gated Nonstop until PLAY_arrID unblocked it).
-            //
-            // EVENT=END is still logged to sniffer.log (handled separately in
-            // Sniffer.cs), Discord RPC still fires, live overlays still render —
-            // only the persistent history layer is skipped.
+            // Skip history writes (CSV and SQLite) for Multiplayer plays — multi-user note
+            // data isn't tracked, so rows would carry wrong single-user values.
+            // wasMultiplayerMode is captured at song start in Sniffer.cs. EVENT=END logging,
+            // Discord RPC, and live overlays are unaffected.
             if (e.wasMultiplayerMode)
             {
                 return;
             }
 
-            // NONSTOP-MODE GATE REMOVED (v0.6.8):
-            //
-            // The pre-v0.6.8 early-return on `e.wasNonstopMode` was put in place
-            // (v0.6.5 hotfix4) because arrangement resolution was unreliable in
-            // Nonstop Play — the arrangement_hash memory pointer did not populate,
-            // and bonus/alternate arrangements could be enabled by the user,
-            // making Path-byte fallback insufficient to distinguish (e.g.) a
-            // regular Bass arrangement from a bonus Bass arrangement.
-            //
-            // v0.6.8 (PLAY_arrID chain) solved both: the new chain reads the
-            // currently-loaded arrangement GUID directly, distinguishing every
-            // arrangement uniquely including bonus/alternate. v0.6.8 lifts the
-            // gate accordingly — Nonstop plays now write to playthrough_history
-            // and playthrough_tracker on equal footing with LaS and SA plays.
-            //
-            // `e.wasNonstopMode` is still populated on the event args (Sniffer.cs
-            // continues to set it at song start) and remains available to any
-            // downstream consumer that wants the contextual flag — it just no
-            // longer gates writes here.
-            //
-            // game_mode column behavior change: Nonstop rows now correctly write
-            // "NONSTOPPLAY" via readout.mode.ToString() (line below), rather than
-            // the pre-v0.6.8 incidental "LEARNASONG" that resulted from Nonstop
-            // reusing the LaS note-data subsystem. Existing rows in the database
-            // are unchanged; only new rows reflect the corrected classification.
+            // e.wasNonstopMode remains populated on the event args for downstream
+            // consumers; it no longer gates history writes.
 
             // Prefer the snapshot readout captured inside Sniffer.LogSongEnd (so we get
             // accurate end-of-song noteData / mode even if currentMemoryReadout has since

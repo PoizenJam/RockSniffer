@@ -13,7 +13,7 @@ let poller = new SnifferPoller({
 	// Per-line height. Bump proportionally if you change font-size.
 	lineHeight: '1.2em',
 
-	// Legacy / unused since v0.6.9 — kept for backward compat with any forked code.
+	// Legacy / unused — kept for backward compat with any forked code.
 	beginLyric: '<span class="lyric">',
 	endLyric: '</span>',
 	newLine: '<br>',

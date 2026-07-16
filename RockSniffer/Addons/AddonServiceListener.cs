@@ -25,18 +25,9 @@ namespace RockSniffer.Addons
             public bool success = false;
 
             /// <summary>
-            /// SnifferState as a readable string in the JSON output (v0.6.7).
-            /// Without StringEnumConverter, Newtonsoft serializes enum fields as
-            /// their underlying integer value (e.g. 6 for SONG_PAUSED), which is
-            /// difficult to interpret in the debug overlay and forces addons to
-            /// hardcode integer mappings. With the converter, the JSON shows
-            /// `"currentState": "SONG_PAUSED"` directly.
-            ///
-            /// API note: any addon that previously compared currentState to an
-            /// integer literal (e.g. `if (data.currentState == 6)`) will break.
-            /// None of the bundled addons in this repository do that; third-party
-            /// addons that do should switch to string comparison
-            /// (e.g. `if (data.currentState == "SONG_PAUSED")`).
+            /// Serialize SnifferState as its member name (e.g. "SONG_PAUSED") rather than
+            /// the underlying integer. Addons compare against the string constants in
+            /// sniffer-poller.js.
             /// </summary>
             [JsonConverter(typeof(StringEnumConverter))]
             public SnifferState currentState = SnifferState.NONE;
