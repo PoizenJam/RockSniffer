@@ -307,6 +307,15 @@ namespace RockSniffer.History
         {
             try
             {
+                // Self-heal: if the CSV vanished mid-session (deleted, moved,
+                // rotated), recreate it with headers before appending — otherwise
+                // AppendAllText silently rebuilds a headerless file, since
+                // InitializeCsv only runs at startup.
+                if (!File.Exists(csvPath))
+                {
+                    InitializeCsv();
+                }
+
                 // Check if this is Score Attack mode
                 bool isScoreAttack = readout.mode == RSMode.SCOREATTACK;
                 ScoreAttackNoteData? saData = null;
