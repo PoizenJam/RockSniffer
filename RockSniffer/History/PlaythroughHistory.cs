@@ -1,5 +1,6 @@
 using RockSnifferLib.RSHelpers;
 using RockSnifferLib.RSHelpers.NoteData;
+using RockSnifferLib.Logging;
 using RockSnifferLib.Sniffing;
 using System;
 using System.Data.SQLite;
@@ -63,7 +64,7 @@ namespace RockSniffer.History
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error initializing SQLite: {ex.Message}");
+                Logger.LogError("Error initializing SQLite: {0}", ex.Message);
                 sqliteEnabled = false;
             }
         }
@@ -121,19 +122,19 @@ namespace RockSniffer.History
                 if (!File.Exists(csvPath))
                 {
                     // Create CSV with headers including Score Attack fields
-                    StringBuilder header = new StringBuilder();
-                    header.Append("Timestamp,TimestampStart,TimestampEnd,SongID,SongName,ArtistName,AlbumName,AlbumYear,SongLength,");
-                    header.Append("ArrangementID,ArrangementPath,ArrangementTuning,GameMode,Author,TotalNotes,NotesHit,NotesMissed,");
-                    header.Append("HighestHitStreak,Accuracy,Completed,Paused,");
-                    header.Append("TotalPerfectHits,PerfectPhrases,GoodPhrases,PassedPhrases,FailedPhrases,");
-                    header.Append("HighestPerfectPhraseStreak,HighestGoodPhraseStreak,HighestPassedPhraseStreak,HighestFailedPhraseStreak,");
-                    header.AppendLine("CurrentScore,HighestMultiplier");
-                    File.WriteAllText(csvPath, header.ToString());
+                    string header =
+                        "Timestamp,TimestampStart,TimestampEnd,SongID,SongName,ArtistName,AlbumName,AlbumYear,SongLength," +
+                        "ArrangementID,ArrangementPath,ArrangementTuning,GameMode,Author,TotalNotes,NotesHit,NotesMissed," +
+                        "HighestHitStreak,Accuracy,Completed,Paused," +
+                        "TotalPerfectHits,PerfectPhrases,GoodPhrases,PassedPhrases,FailedPhrases," +
+                        "HighestPerfectPhraseStreak,HighestGoodPhraseStreak,HighestPassedPhraseStreak,HighestFailedPhraseStreak," +
+                        "CurrentScore,HighestMultiplier" + Environment.NewLine;
+                    File.WriteAllText(csvPath, header);
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error initializing CSV: {ex.Message}");
+                Logger.LogError("Error initializing CSV: {0}", ex.Message);
                 csvEnabled = false;
             }
         }
@@ -297,7 +298,7 @@ namespace RockSniffer.History
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error logging to SQLite: {ex.Message}");
+                Logger.LogError("Error logging to SQLite: {0}", ex.Message);
             }
         }
 
@@ -357,7 +358,7 @@ namespace RockSniffer.History
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error logging to CSV: {ex.Message}");
+                Logger.LogError("Error logging to CSV: {0}", ex.Message);
             }
         }
 

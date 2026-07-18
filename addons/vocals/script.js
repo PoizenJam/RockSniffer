@@ -13,7 +13,9 @@ let poller = new SnifferPoller({
 	// Per-line height. Bump proportionally if you change font-size.
 	lineHeight: '1.2em',
 
-	// Legacy / unused — kept for backward compat with any forked code.
+	// HTML wrappers emitted around each lyric segment and line break when
+	// building lyric markup. Unused by the current karaoke renderer (which
+	// builds DOM nodes directly) — kept for backward compat with forked code.
 	beginLyric: '<span class="lyric">',
 	endLyric: '</span>',
 	newLine: '<br>',

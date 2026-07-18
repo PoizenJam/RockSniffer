@@ -46,8 +46,6 @@ namespace RockSniffer.Configuration
         // EVENT START/END log output mode
         public EventLogMode eventLogMode = EventLogMode.Disabled;
 
-        // Easter egg: random *sniff sniff* console messages
-        public bool sniffSniff = true;
 
         //Convert dictionary to array
         private void ConvertToArray()

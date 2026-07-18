@@ -34,7 +34,6 @@ namespace RockSniffer
 
         internal static Process rsProcess;
 
-        private static readonly Random random = new Random();
 
         private static readonly bool Is64Bits = (IntPtr.Size == 8);
 
@@ -345,10 +344,6 @@ namespace RockSniffer
                 //GOTTA GO FAST
                 Thread.Sleep(1000);
 
-                if (config.outputSettings.sniffSniff && random.Next(100) == 0)
-                {
-                    Console.WriteLine("*sniff sniff*");
-                }
             }
 
             sniffer.Stop();
