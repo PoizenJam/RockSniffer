@@ -488,12 +488,12 @@ namespace RockSniffer
                 outputtext = outputtext.Replace("%TOTAL_NOTES%", nd.TotalNotes.ToString());
                 outputtext = outputtext.Replace("%CURRENT_ACCURACY%", FormatPercentage(nd.Accuracy));
 
-                // %CURRENT_PATH% / %CURRENT_PATH_BYTE% — menu-level Path selection
-                // ("Lead"/"Rhythm"/"Bass"), populated from launch and valid in all gameStages.
-                // Empty for unknown byte values so OBS text sources hide. Memory-readout block
-                // placement so path.txt updates even with no song loaded.
-                outputtext = outputtext.Replace("%CURRENT_PATH%", memReadout.currentPath ?? "");
-                outputtext = outputtext.Replace("%CURRENT_PATH_BYTE%", memReadout.currentPathByte.ToString());
+                // %CURRENT_PATH% — menu-level Path selection ("Lead"/"Rhythm"/"Bass"),
+                // populated from launch and valid in all gameStages. Empty when Unknown so
+                // OBS text sources hide. Memory-readout block placement so path.txt updates
+                // even with no song loaded.
+                outputtext = outputtext.Replace("%CURRENT_PATH%",
+                    memReadout.currentPath == RSPath.Unknown ? "" : memReadout.currentPath.ToString());
 
                 //Only write to disk if content has changed since last cycle
                 string cachedValue;

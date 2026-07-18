@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Data.SQLite;
 using System.IO;
 
@@ -55,20 +55,6 @@ namespace RockSniffer.Addons.Storage
         {
             //Make sure the table exists
             CreateTable(addonid);
-
-            // Skip byte-identical writes: multiple browser sources running the same addon
-            // ID can PUT identical content back-to-back. Costs one SELECT (~1ms on
-            // localhost) per PUT.
-            using (var checkCmd = Connection.CreateCommand())
-            {
-                checkCmd.CommandText = $"SELECT value FROM {addonid} WHERE key=@key";
-                checkCmd.Parameters.AddWithValue("@key", key);
-
-                if (checkCmd.ExecuteScalar() is string existing && existing == value)
-                {
-                    return;
-                }
-            }
 
             Console.WriteLine($"Storing {addonid}/{key} ({value.Length} bytes)");
 

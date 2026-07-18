@@ -256,7 +256,7 @@ class SnifferPoller {
 
 		// STEP 2: Path filter — first match wins
 		var currentPath = this._prevdata.memoryReadout.currentPath;
-		if(currentPath) {
+		if (currentPath && currentPath !== "Unknown") {
 			// 2a: Prefer non-bonus, non-alternate
 			for (var i = 0; i < arrangements.length; i++) {
 				var arr = arrangements[i];
