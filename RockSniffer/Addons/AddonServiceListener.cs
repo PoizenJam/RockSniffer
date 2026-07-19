@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using RockSniffer.Addons.Storage;
 using RockSniffer.Configuration;
@@ -298,6 +298,31 @@ namespace RockSniffer.Addons
                             break;
                         case ".js":
                             contentType = "text/javascript";
+                            break;
+                        case ".ttf":
+                            contentType = "font/ttf";
+                            break;
+                        case ".otf":
+                            contentType = "font/otf";
+                            break;
+                        case ".woff":
+                            contentType = "font/woff";
+                            break;
+                        case ".woff2":
+                            contentType = "font/woff2";
+                            break;
+                        case ".png":
+                            contentType = "image/png";
+                            break;
+                        case ".jpg":
+                        case ".jpeg":
+                            contentType = "image/jpeg";
+                            break;
+                        case ".gif":
+                            contentType = "image/gif";
+                            break;
+                        case ".svg":
+                            contentType = "image/svg+xml";
                             break;
                     }
 

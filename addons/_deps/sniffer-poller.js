@@ -232,16 +232,24 @@ class SnifferPoller {
 		if(!this._prevdata) {
 			return null;
 		}
+		return this.resolveArrangement(this._prevdata.songDetails, this._prevdata.memoryReadout);
+	}
 
-		if(!this._prevdata.memoryReadout) {
+	//Resolve the live arrangement within the given song details + readout. Shared
+	// by getCurrentArrangement and the addon `arrangement` computeds — addons pass
+	// their own displayed song (prevData during mode-1 results) so resolution stays
+	// bound to what is on screen even after the poller has advanced to the next
+	// Nonstop song.
+	resolveArrangement(songDetails, memoryReadout) {
+		if(!memoryReadout) {
 			return null;
 		}
 
-		if(!this._prevdata.songDetails || !this._prevdata.songDetails.arrangements) {
+		if(!songDetails || !songDetails.arrangements) {
 			return null;
 		}
 
-		var arrangements = this._prevdata.songDetails.arrangements;
+		var arrangements = songDetails.arrangements;
 
 		// STEP 1: Direct arrangementID match — exact, allow bonus/alt
 		for (var i = arrangements.length - 1; i >= 0; i--) {
@@ -249,13 +257,13 @@ class SnifferPoller {
 
 			//Check that ID is correctly formatted (32 hex chars) to avoid bad matches
 			if(arrangement.arrangementID && arrangement.arrangementID.length == 32 &&
-			   arrangement.arrangementID == this._prevdata.memoryReadout.arrangementID) {
+			   arrangement.arrangementID == memoryReadout.arrangementID) {
 				return arrangement;
 			}
 		}
 
 		// STEP 2: Path filter — first match wins
-		var currentPath = this._prevdata.memoryReadout.currentPath;
+		var currentPath = memoryReadout.currentPath;
 		if (currentPath && currentPath !== "Unknown") {
 			// 2a: Prefer non-bonus, non-alternate
 			for (var i = 0; i < arrangements.length; i++) {
@@ -276,6 +284,64 @@ class SnifferPoller {
 
 		// Unresolvable — return null. Callers all have null guards.
 		return null;
+	}
+
+	// Mode-1 results min-hold, shared by the mode-1 addons: holds the results
+	// comparison visible for at least one pass through app.feedback
+	// (feedback.length × cycleMs) before song lifecycle events may flip back to
+	// mode 0; a state transition to SONG_SELECTED/SONG_STARTING/SONG_PLAYING
+	// overrides the hold immediately (needed in Nonstop Play, where the songID
+	// flips to the next queued song the moment the hub loads and would otherwise
+	// wipe the comparison instantly).
+	//
+	// Usage, after creating the Vue app:
+	//   poller.enableResultsHold(app);            // default 5000ms cycle
+	// then poller.resultsHold.markShown() when entering mode 1, and
+	// poller.resultsHold.flip(force) for manual flips.
+	enableResultsHold(app, options) {
+		options = options || {};
+		var cycleMs = options.cycleMs || 5000;
+		var shownAt = 0;
+		var pendingTimer = null;
+
+		var flip = function (force) {
+			if (pendingTimer) {
+				clearTimeout(pendingTimer);
+				pendingTimer = null;
+			}
+			app.visible = true;
+			if (app.mode !== 1) {
+				app.mode = 0;
+				return;
+			}
+			var minHoldMs = ((app.feedback || []).length || 1) * cycleMs;
+			var elapsed = Date.now() - shownAt;
+			if (force || elapsed >= minHoldMs) {
+				app.mode = 0;
+			} else {
+				pendingTimer = setTimeout(function () {
+					app.mode = 0;
+					pendingTimer = null;
+				}, minHoldMs - elapsed);
+			}
+		};
+
+		this.resultsHold = {
+			flip: flip,
+			markShown: function () { shownAt = Date.now(); }
+		};
+
+		this.callbacks.onSongStarted.push(function () { flip(false); });
+		this.callbacks.onSongChanged.push(function () { flip(false); });
+		this.callbacks.onStateChanged.push(function (oldState, newState) {
+			if (newState === STATE_SONG_SELECTED ||
+			    newState === STATE_SONG_STARTING ||
+			    newState === STATE_SONG_PLAYING) {
+				flip(true);
+			}
+		});
+
+		return this.resultsHold;
 	}
 
 	//Get section at current time

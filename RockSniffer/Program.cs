@@ -115,13 +115,13 @@ namespace RockSniffer
             Directory.CreateDirectory("output");
 
             //Initialize playthrough history
-            if (config.outputSettings.enableSqliteHistory || config.outputSettings.enableCsvHistory)
+            if (config.historySettings.enableSqliteHistory || config.historySettings.enableCsvHistory)
             {
                 playthroughHistory = new PlaythroughHistory(
-                    config.outputSettings.enableSqliteHistory,
-                    config.outputSettings.sqliteHistoryPath,
-                    config.outputSettings.enableCsvHistory,
-                    config.outputSettings.csvHistoryPath
+                    config.historySettings.enableSqliteHistory,
+                    config.historySettings.sqliteHistoryPath,
+                    config.historySettings.enableCsvHistory,
+                    config.historySettings.csvHistoryPath
                 );
             }
 

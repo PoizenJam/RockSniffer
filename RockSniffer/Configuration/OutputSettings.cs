@@ -37,11 +37,6 @@ namespace RockSniffer.Configuration
             { "current_phrase.txt", "%CURRENT_PHRASE%" }
         };
 
-        // Playthrough history settings
-        public bool enableSqliteHistory = false;
-        public string sqliteHistoryPath = "output/playthrough_history.db";
-        public bool enableCsvHistory = false;
-        public string csvHistoryPath = "output/playthrough_history.csv";
 
         // EVENT START/END log output mode
         public EventLogMode eventLogMode = EventLogMode.Disabled;

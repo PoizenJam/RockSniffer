@@ -21,38 +21,6 @@ function accuracyGradient(accuracy){
 	return "rgb("+red+","+green+", 0)";
 };
 
-// Min-hold for mode 1: holds the results comparison visible for at least one
-// full pass through the feedback array (feedback.length × CYCLE_MS) before
-// onSongChanged/onSongStarted may flip back to mode 0. A state transition to
-// SONG_SELECTED/SONG_STARTING/SONG_PLAYING overrides the hold immediately.
-// Needed in Nonstop Play, where the songID flips to the next queued song the
-// moment the hub loads and would otherwise wipe the comparison instantly.
-const CYCLE_MS = 5000;
-let modeOneSetAt = 0;
-let pendingModeFlipTimer = null;
-
-function flipToModeZero(force) {
-	force = !!force;
-	if (pendingModeFlipTimer) {
-		clearTimeout(pendingModeFlipTimer);
-		pendingModeFlipTimer = null;
-	}
-	app.visible = true;
-	if (app.mode !== 1) {
-		app.mode = 0;
-		return;
-	}
-	const minHoldMs = ((app.feedback || []).length || 1) * CYCLE_MS;
-	const elapsed = Date.now() - modeOneSetAt;
-	if (force || elapsed >= minHoldMs) {
-		app.mode = 0;
-	} else {
-		pendingModeFlipTimer = setTimeout(function () {
-			app.mode = 0;
-			pendingModeFlipTimer = null;
-		}, minHoldMs - elapsed);
-	}
-}
 
 //Edit poller functions
 const poller = new SnifferPoller({
@@ -62,13 +30,7 @@ const poller = new SnifferPoller({
 		app.snifferData = data;
 	},
 
-	onSongStarted: function(data) {
-		flipToModeZero();
-	},
 
-	onSongChanged: function(data) {
-		flipToModeZero();
-	},
 
 	onSongEnded: function(data) {
 		app.prevData = app.snifferData;
@@ -83,21 +45,10 @@ const poller = new SnifferPoller({
 		app.snapshotHasPreviousBest = tracker.hasPreviousBest();
 		app.snapshotFinal = tracker.getFinal();
 		app.mode = 1;
-		modeOneSetAt = Date.now();
+		poller.resultsHold.markShown();
 		generateFeedback();
 	},
 
-	onStateChanged: function(oldState, newState) {
-		// Override min-hold the moment the user clearly progresses to the next
-		// song. SONG_SELECTED = picked from hub; SONG_STARTING = chart loading;
-		// SONG_PLAYING = actively playing. All three unambiguously signal that
-		// the user has moved past the post-results screen.
-		if (newState === STATE_SONG_SELECTED ||
-		    newState === STATE_SONG_STARTING ||
-		    newState === STATE_SONG_PLAYING) {
-			flipToModeZero(true);
-		}
-	}
 });
 
 //Get tracker functions
@@ -250,39 +201,12 @@ const app = new Vue({
 		//Get current arrangement: arrangementID direct match → currentPath filter
 		//(first non-bonus/non-alternate match wins, bonus allowed as fallback).
 		arrangement: function() {
+			//Shared resolver (sniffer-poller.js): arrangementID direct match, then
+			//currentPath filter. Passing this.song keeps mode-1 resolution bound to
+			//the displayed (prevData) song even after the poller has advanced to the
+			//next Nonstop song.
 			if(this.song == null) {return null;}
-			if(this.song.arrangements == null) {return null;}
-			var arrangements = this.song.arrangements;
-			
-			//STEP 1: arrangementID direct match
-			for (let i = arrangements.length - 1; i >= 0; i--) {
-				let arrangement = arrangements[i];
-				if(arrangement.arrangementID && arrangement.arrangementID.length == 32 &&
-				   arrangement.arrangementID == this.readout.arrangementID) {
-					return arrangement;
-				}
-			}
-			
-			//STEP 2: currentPath filter — first match wins (legacy behavior restored in 5.1)
-			var currentPath = this.readout.currentPath;
-			if(currentPath) {
-				for (let i = 0; i < arrangements.length; i++) {
-					let arr = arrangements[i];
-					if((arr.type == currentPath || arr.name == currentPath) &&
-					   arr.isBonusArrangement == false && arr.isAlternateArrangement == false) {
-						return arr;
-					}
-				}
-				//Bonus/alt allowed if no regular match
-				for (let i = 0; i < arrangements.length; i++) {
-					let arr = arrangements[i];
-					if(arr.type == currentPath || arr.name == currentPath) {
-						return arr;
-					}
-				}
-			}
-			
-			return null;
+			return poller.resolveArrangement(this.song, this.readout);
 		},
 		
 		//Get tuning name
@@ -627,3 +551,6 @@ function generateFeedback() {
 
 	hideTimeout = setTimeout(() => {if(app.mode == 1) {app.mode = 0; app.visible = false;}}, 60000);
 }
+
+// Shared mode-1 results min-hold (implementation in sniffer-poller.js).
+poller.enableResultsHold(app);

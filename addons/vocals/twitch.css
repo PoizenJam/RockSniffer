@@ -4,7 +4,7 @@
    GDPR violation (LG München, 3 O 17493/20). Do not swap for an @import. */
 @font-face {
     font-family: 'Inter';
-    src: url('./fonts/Inter-VariableFont_opsz,wght.ttf') format('truetype-variations');
+    src: url('../_deps/fonts/Inter-VariableFont_opsz,wght.ttf') format('truetype-variations');
     font-weight: 100 900;
     font-style: normal;
     font-display: swap;
@@ -12,7 +12,7 @@
 
 @font-face {
     font-family: 'Inter';
-    src: url('./fonts/Inter-Italic-VariableFont_opsz,wght.ttf') format('truetype-variations');
+    src: url('../_deps/fonts/Inter-Italic-VariableFont_opsz,wght.ttf') format('truetype-variations');
     font-weight: 100 900;
     font-style: italic;
     font-display: swap;
