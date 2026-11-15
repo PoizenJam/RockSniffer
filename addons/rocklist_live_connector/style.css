@@ -1,0 +1,612 @@
+body.rocksniffer-connector-page {
+  color-scheme: dark;
+  --shell-gutter: 1.25rem;
+  --font-body: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-accent: "Segoe UI", var(--font-body);
+  --bg: #0c1219;
+  --bg-elevated: #121923;
+  --panel: rgba(18, 20, 26, 0.88);
+  --panel-strong: #13161d;
+  --panel-soft: #181c24;
+  --panel-muted: #0f1218;
+  --text: #f4f2ed;
+  --muted: #b9bfcc;
+  --brand: #da4f36;
+  --brand-strong: #f06642;
+  --brand-deep: #f1d2ac;
+  --accent: #6d7688;
+  --accent-strong: #9aa4bb;
+  --success: #3ecf8e;
+  --warning: #f4b861;
+  --danger: #ff6b6b;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.14);
+  --shadow: 0 28px 80px rgba(0, 0, 0, 0.45);
+  --shadow-soft: 0 12px 32px rgba(0, 0, 0, 0.24);
+  --app-background:
+    linear-gradient(180deg, #121a24 0%, #0c1219 44%, #091017 100%),
+    radial-gradient(circle at 7% 5%, rgba(255, 255, 255, 0.14), transparent 20%),
+    radial-gradient(circle at top right, rgba(145, 159, 188, 0.11), transparent 22%),
+    radial-gradient(circle at 78% 14%, rgba(127, 184, 171, 0.05), transparent 18%),
+    radial-gradient(circle at 50% 120%, rgba(118, 136, 154, 0.07), transparent 30%);
+  --glow:
+    0 0 0 1px rgba(240, 102, 66, 0.1), 0 18px 50px rgba(218, 79, 54, 0.14);
+}
+
+body.rocksniffer-connector-page * {
+  box-sizing: border-box;
+}
+
+body.rocksniffer-connector-page {
+  min-height: 100%;
+  background-color: var(--bg);
+  background-image: var(--app-background);
+  background-attachment: fixed;
+}
+
+body.rocksniffer-connector-page {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--text);
+  font-family: var(--font-body);
+  background-color: var(--bg);
+  background-image: var(--app-background);
+  background-attachment: fixed;
+  position: relative;
+  isolation: isolate;
+}
+
+body.rocksniffer-connector-page::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  opacity: 0.18;
+  background-image:
+    radial-gradient(rgba(255, 255, 255, 0.14) 0.6px, transparent 0.6px),
+    radial-gradient(rgba(255, 255, 255, 0.1) 0.6px, transparent 0.6px);
+  background-position:
+    0 0,
+    11px 13px;
+  background-size: 18px 18px;
+  mix-blend-mode: soft-light;
+}
+
+body.rocksniffer-connector-page::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 24px 24px;
+  background-position: -1px -1px;
+  opacity: 0.18;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.8), transparent 88%);
+}
+
+body.rocksniffer-connector-page a {
+  color: inherit;
+}
+
+body.rocksniffer-connector-page button,
+body.rocksniffer-connector-page input,
+body.rocksniffer-connector-page textarea {
+  font: inherit;
+}
+
+body.rocksniffer-connector-page button:not(:disabled) {
+  cursor: pointer;
+}
+
+body.rocksniffer-connector-page h1,
+body.rocksniffer-connector-page h2,
+body.rocksniffer-connector-page .song-title,
+body.rocksniffer-connector-page .status-value,
+body.rocksniffer-connector-page .hero-value {
+  font-family: var(--font-accent);
+  letter-spacing: -0.03em;
+}
+
+body.rocksniffer-connector-page .shell {
+  width: min(1160px, calc(100% - 2rem));
+  margin: 0 auto;
+  min-height: 100vh;
+  padding: 1.25rem 0 2.5rem;
+  position: relative;
+}
+
+body.rocksniffer-connector-page .shell::before,
+body.rocksniffer-connector-page .shell::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--border);
+  pointer-events: none;
+}
+
+body.rocksniffer-connector-page .shell::before {
+  left: var(--shell-gutter);
+}
+
+body.rocksniffer-connector-page .shell::after {
+  right: var(--shell-gutter);
+}
+
+body.rocksniffer-connector-page .shell__stack {
+  display: grid;
+  gap: 0.85rem;
+  position: relative;
+  z-index: 1;
+}
+
+body.rocksniffer-connector-page .layout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+body.rocksniffer-connector-page .layout > .panel {
+  flex: 1 1 320px;
+  min-width: min(100%, 320px);
+}
+
+body.rocksniffer-connector-page .panel {
+  position: relative;
+  overflow: hidden;
+  padding: 1.15rem;
+  border: 1px solid var(--border);
+  background: rgba(18, 20, 26, 0.9);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(14px);
+}
+
+body.rocksniffer-connector-page .panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.055), transparent 22%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 36%);
+  opacity: 0.9;
+}
+
+body.rocksniffer-connector-page .panel > * {
+  position: relative;
+  z-index: 1;
+}
+
+body.rocksniffer-connector-page .hero {
+  display: grid;
+  gap: 0.55rem;
+  padding: 1.3rem 1.4rem;
+}
+
+body.rocksniffer-connector-page .hero-brand {
+  display: inline-flex;
+  width: max-content;
+  max-width: 100%;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--brand-deep);
+  font-family: var(--font-accent);
+  font-size: clamp(1.1rem, 2.4vw, 1.45rem);
+  font-weight: 700;
+  line-height: 1.1;
+  text-decoration: underline;
+  text-decoration-color: rgba(241, 210, 172, 0.62);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.2em;
+}
+
+body.rocksniffer-connector-page .hero-brand svg {
+  flex: 0 0 auto;
+}
+
+body.rocksniffer-connector-page .hero-brand:hover {
+  color: #fff0d8;
+  text-decoration-color: currentColor;
+}
+
+body.rocksniffer-connector-page .hero-brand:focus-visible {
+  outline: 2px solid rgba(240, 102, 66, 0.72);
+  outline-offset: 4px;
+}
+
+body.rocksniffer-connector-page .hero h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 2.8rem);
+  line-height: 0.98;
+}
+
+body.rocksniffer-connector-page .hero-copy,
+body.rocksniffer-connector-page .panel-heading p,
+body.rocksniffer-connector-page .field-note,
+body.rocksniffer-connector-page .status-detail,
+body.rocksniffer-connector-page .song-detail,
+body.rocksniffer-connector-page .song-meta,
+body.rocksniffer-connector-page .steps {
+  color: var(--muted);
+}
+
+body.rocksniffer-connector-page .hero-copy,
+body.rocksniffer-connector-page .panel-heading p,
+body.rocksniffer-connector-page .status-detail,
+body.rocksniffer-connector-page .song-detail,
+body.rocksniffer-connector-page .song-meta,
+body.rocksniffer-connector-page .steps,
+body.rocksniffer-connector-page .field-note {
+  line-height: 1.55;
+}
+
+body.rocksniffer-connector-page .hero-copy {
+  margin: 0;
+  font-size: 0.98rem;
+}
+
+body.rocksniffer-connector-page .field-label {
+  margin: 0;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent-strong);
+}
+
+body.rocksniffer-connector-page .panel-heading {
+  display: grid;
+  gap: 0.35rem;
+  margin-bottom: 0.9rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid var(--border);
+}
+
+body.rocksniffer-connector-page .panel-heading h2 {
+  margin: 0;
+  font-size: clamp(1.45rem, 3vw, 2rem);
+  line-height: 1.02;
+}
+
+body.rocksniffer-connector-page .panel-heading p {
+  margin: 0;
+  max-width: 42rem;
+}
+
+body.rocksniffer-connector-page .eyebrow {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--brand-deep);
+}
+
+body.rocksniffer-connector-page .status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.65rem;
+}
+
+body.rocksniffer-connector-page .status-card,
+body.rocksniffer-connector-page .song-card {
+  position: relative;
+  display: grid;
+  gap: 0.45rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  background: rgba(15, 18, 24, 0.9);
+}
+
+body.rocksniffer-connector-page .status-card::before,
+body.rocksniffer-connector-page .song-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: rgba(154, 164, 187, 0.45);
+}
+
+body.rocksniffer-connector-page .status-card.is-success::before {
+  background: rgba(62, 207, 142, 0.85);
+}
+
+body.rocksniffer-connector-page .status-card.is-warning::before {
+  background: rgba(244, 184, 97, 0.88);
+}
+
+body.rocksniffer-connector-page .status-card.is-danger::before {
+  background: rgba(255, 107, 107, 0.9);
+}
+
+body.rocksniffer-connector-page .status-card.is-success {
+  background: rgba(18, 45, 34, 0.82);
+}
+
+body.rocksniffer-connector-page .status-card.is-warning {
+  background: rgba(54, 35, 11, 0.78);
+}
+
+body.rocksniffer-connector-page .status-card.is-danger {
+  background: rgba(51, 20, 20, 0.8);
+}
+
+body.rocksniffer-connector-page .status-value {
+  margin: 0;
+  font-size: 1.35rem;
+  line-height: 1.05;
+}
+
+body.rocksniffer-connector-page .status-detail {
+  margin: 0;
+}
+
+body.rocksniffer-connector-page .form-grid {
+  display: grid;
+  gap: 0.85rem;
+}
+
+body.rocksniffer-connector-page input {
+  width: 100%;
+  min-height: 3.2rem;
+  padding: 0 1rem;
+  border: 1px solid var(--border-strong);
+  background: rgba(12, 18, 25, 0.86);
+  color: var(--text);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+body.rocksniffer-connector-page input::placeholder {
+  color: rgba(185, 191, 204, 0.5);
+}
+
+body.rocksniffer-connector-page input:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+body.rocksniffer-connector-page input:focus {
+  outline: none;
+  border-color: rgba(240, 102, 66, 0.72);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    var(--glow);
+}
+
+body.rocksniffer-connector-page .button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+body.rocksniffer-connector-page .debug-heading {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+}
+
+body.rocksniffer-connector-page .debug-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: var(--text);
+  font-size: 0.92rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+body.rocksniffer-connector-page .debug-toggle input {
+  width: 1.05rem;
+  min-height: 1.05rem;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--brand);
+}
+
+body.rocksniffer-connector-page .debug-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+body.rocksniffer-connector-page .debug-output {
+  display: none;
+  width: 100%;
+  max-height: 24rem;
+  overflow: auto;
+  margin: 0.85rem 0 0;
+  padding: 0.85rem;
+  border: 1px solid var(--border);
+  background: rgba(7, 10, 14, 0.86);
+  color: #dce5f2;
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+body.rocksniffer-connector-page .debug-panel.is-debug-enabled .debug-output {
+  display: block;
+}
+
+body.rocksniffer-connector-page button {
+  min-height: 3rem;
+  padding: 0 1rem;
+  border-radius: 3px;
+  border: 1px solid rgba(240, 102, 66, 0.48);
+  background: var(--brand);
+  color: #fff7f2;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  box-shadow: none;
+  transition:
+    box-shadow 140ms ease,
+    border-color 140ms ease,
+    background-color 140ms ease;
+}
+
+body.rocksniffer-connector-page button.secondary {
+  border-color: var(--border-strong);
+  background: rgba(18, 25, 35, 0.82);
+  color: var(--text);
+  box-shadow: none;
+}
+
+body.rocksniffer-connector-page .button-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3rem;
+  padding: 0 1rem;
+  border-radius: 3px;
+  border: 1px solid rgba(240, 102, 66, 0.48);
+  background: var(--brand);
+  color: #fff7f2;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  transition:
+    box-shadow 140ms ease,
+    border-color 140ms ease,
+    background-color 140ms ease;
+}
+
+body.rocksniffer-connector-page .button-link.secondary {
+  border-color: var(--border-strong);
+  background: rgba(18, 25, 35, 0.82);
+  color: var(--text);
+  box-shadow: none;
+}
+
+body.rocksniffer-connector-page button:hover {
+  border-color: rgba(240, 102, 66, 0.72);
+  background: var(--brand-strong);
+  box-shadow: none;
+}
+
+body.rocksniffer-connector-page .button-link:hover,
+body.rocksniffer-connector-page button.secondary:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(24, 28, 36, 0.95);
+  box-shadow: var(--shadow-soft);
+}
+
+body.rocksniffer-connector-page .button-link:not(.secondary):hover {
+  border-color: rgba(240, 102, 66, 0.72);
+  background: var(--brand-strong);
+  box-shadow: none;
+}
+
+body.rocksniffer-connector-page button:focus-visible {
+  outline: none;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+    var(--glow);
+}
+
+body.rocksniffer-connector-page .button-link:focus-visible {
+  outline: none;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+    var(--glow);
+}
+
+body.rocksniffer-connector-page button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+  box-shadow: none;
+}
+
+body.rocksniffer-connector-page .is-hidden {
+  display: none !important;
+}
+
+body.rocksniffer-connector-page .field-note {
+  margin: 0;
+}
+
+body.rocksniffer-connector-page .field-note:empty {
+  display: none;
+}
+
+body.rocksniffer-connector-page .field-note.is-success {
+  color: var(--success);
+}
+
+body.rocksniffer-connector-page .field-note.is-warning {
+  color: var(--warning);
+}
+
+body.rocksniffer-connector-page .field-note.is-danger {
+  color: var(--danger);
+}
+
+body.rocksniffer-connector-page .song-card {
+  gap: 0.65rem;
+}
+
+body.rocksniffer-connector-page .song-card.is-empty {
+  gap: 0.35rem;
+}
+
+body.rocksniffer-connector-page .song-title {
+  margin: 0;
+  font-size: clamp(1.65rem, 3vw, 2.2rem);
+  line-height: 1.02;
+  max-width: 16ch;
+}
+
+body.rocksniffer-connector-page .song-title.is-empty {
+  font-size: 1.25rem;
+  max-width: none;
+}
+
+body.rocksniffer-connector-page .song-meta,
+body.rocksniffer-connector-page .song-detail {
+  margin: 0;
+}
+
+body.rocksniffer-connector-page ::selection {
+  background: rgba(240, 102, 66, 0.3);
+  color: var(--text);
+}
+
+@media (max-width: 960px) {
+  body.rocksniffer-connector-page {
+    --shell-gutter: 0.875rem;
+  }
+
+  body.rocksniffer-connector-page .hero {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 720px) {
+  body.rocksniffer-connector-page {
+    --shell-gutter: 0.75rem;
+  }
+
+  body.rocksniffer-connector-page .shell {
+    width: min(100% - 1rem, 1160px);
+    padding-top: 0.85rem;
+  }
+
+  body.rocksniffer-connector-page .panel {
+    padding: 1rem;
+  }
+
+  body.rocksniffer-connector-page .button-row {
+    flex-direction: column;
+  }
+
+  body.rocksniffer-connector-page button {
+    width: 100%;
+  }
+}
